@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────────────────
+   Tokens de tema. Trocamos a classe .dark no <html>.
+   Vermelho V4 (#E8000D) e preto são constantes de marca;
+   o que muda entre temas são superfícies e textos.
+   ───────────────────────────────────────────────────────── */
+:root {
+  --bg: #F4F5F7;
+  --surface: #FFFFFF;
+  --surface-2: #F9FAFB;
+  --surface-3: #F3F4F6;
+  --border: #E8EAED;
+  --border-2: #D1D5DB;
+  --text: #1A1A2E;
+  --text-2: #4B5563;
+  --text-3: #9CA3AF;
+  --red: #E8000D;
+  --red-soft: #FF4D4D;
+  --red-2: #FEE2E2;
+  --red-3: #FECACA;
+  --ink: #111014;
+  --grn: #10B981;
+  --grn-2: #D1FAE5;
+  --amb: #F59E0B;
+  --amb-2: #FEF3C7;
+  --shadow: 0 4px 16px rgba(0, 0, 0, .06);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, .12);
+  --chart-grid: #E8EAED;
+  --chart-tx: #4B5563;
+}
+
+.dark {
+  --bg: #0B0B0F;
+  --surface: #16161C;
+  --surface-2: #1C1C24;
+  --surface-3: #24242E;
+  --border: #2A2A33;
+  --border-2: #3A3A46;
+  --text: #F4F5F7;
+  --text-2: #B4B7C0;
+  --text-3: #7A7D88;
+  --red: #FF2130;
+  --red-soft: #FF5A66;
+  --red-2: #2A1416;
+  --red-3: #3A1A1E;
+  --ink: #F4F5F7;
+  --grn: #34D399;
+  --grn-2: #10241E;
+  --amb: #FBBF24;
+  --amb-2: #2A2314;
+  --shadow: 0 4px 16px rgba(0, 0, 0, .4);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, .6);
+  --chart-grid: #2A2A33;
+  --chart-tx: #B4B7C0;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Utilitários semânticos mapeados aos tokens (usados junto ao Tailwind) */
+.bg-surface { background: var(--surface); }
+.bg-surface-2 { background: var(--surface-2); }
+.bg-app { background: var(--bg); }
+.bd { border-color: var(--border); }
+.tx { color: var(--text); }
+.tx-2 { color: var(--text-2); }
+.tx-3 { color: var(--text-3); }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.spin { animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* Respeita usuários que pedem menos movimento */
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
+
+/* Foco visível para navegação por teclado */
+:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+
+/* Scrollbar discreta no dark */
+.dark ::-webkit-scrollbar { width: 10px; height: 10px; }
+.dark ::-webkit-scrollbar-thumb { background: #2A2A33; border-radius: 8px; }
