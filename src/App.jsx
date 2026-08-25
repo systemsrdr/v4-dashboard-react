@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
-import { CLIENTS_DB, ADMIN_PASS } from './lib/clients'
+import { CLIENTS_DB, ADMIN_PASS, getFunilSources } from './lib/clients'
 import { makeFmt, iso, groupMeta, groupGoogle, groupTikTok } from './lib/format'
-import { fetchAll, fetchDemographics, fetchAds } from './lib/api'
+import { fetchCore, fetchExtras, fetchDemographics, fetchAds } from './lib/api'
 import { Login } from './components/Login'
 import { Sidebar } from './components/Sidebar'
 import { Header, Footer } from './components/Header'
@@ -60,11 +60,19 @@ export default function App() {
   const load = useCallback(async (from, to) => {
     if (!client) return
     setLoading(true)
+    setDemo(null)
     try {
-      const d = await fetchAll(client, from, to)
-      setData(d)
+      // Onda 1: essencial. Assim que chega, a tela já aparece.
+      const core = await fetchCore(client, from, to)
+      setData(core)
+      setLoading(false)
+      // Onda 2: comparativo (deltas) + geo, em segundo plano — mesclados quando chegam.
+      fetchExtras(client, from, to)
+        .then((extra) => setData((d) => d ? { ...d, prev: extra.prev, geo: extra.geo } : d))
+        .catch(() => {})
+      // Onda 2b: demografia, independente.
       fetchDemographics(client, from, to).then(setDemo).catch(() => setDemo(null))
-    } finally {
+    } catch {
       setLoading(false)
     }
   }, [client])
@@ -107,10 +115,11 @@ export default function App() {
   const gG = data ? groupGoogle(data.google) : []
   const tG = data ? groupTikTok(data.tiktok) : []
   const totalSp = mG.reduce((a, x) => a + x.sp, 0) + gG.reduce((a, x) => a + x.sp, 0)
+  const clientFunilSources = getFunilSources(client)
 
   return (
     <div style={{ background: 'var(--bg)', minHeight: '100vh' }}>
-      <Sidebar active={section} onNav={setSection} hasTikTok={client.tiktokIds?.length > 0} funilSource={client.funilSource} />
+      <Sidebar active={section} onNav={setSection} hasTikTok={client.tiktokIds?.length > 0} funilSources={clientFunilSources} />
       <div style={{ marginLeft: 68 }}>
         <Header
           client={client} slug={slug}
@@ -135,7 +144,12 @@ export default function App() {
               {section === 'meta' && <MetaChannel mG={mG} fmt={fmt} tipo={client.tipo} />}
               {section === 'google' && <GoogleChannel gG={gG} fmt={fmt} />}
               {section === 'tiktok' && <TikTokChannel tG={tG} fmt={fmt} />}
-              {section === 'fonte' && <FonteChannel funilSource={client.funilSource} funilSrc={data.funilSrc} totalSpend={totalSp} fmt={fmt} />}
+              {section.startsWith('fonte') && (() => {
+                const srcs = data.funilSrcs || []
+                const picked = section === 'fonte' ? srcs[0] : srcs.find((s) => `fonte-${s.tipo}` === section)
+                if (!picked) return null
+                return <FonteChannel funilSource={picked.tipo} funilSrc={picked.dados} totalSpend={totalSp} fmt={fmt} />
+              })()}
               {section === 'ads' && <AdsSection adsRaw={adsRaw} tipo={client.tipo} fmt={fmt} loading={adsLoading} />}
             </>
           ) : null}

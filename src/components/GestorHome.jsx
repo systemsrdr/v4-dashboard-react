@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CLIENTS_DB, ADMIN_PASS } from '../lib/clients'
+import { CLIENTS_DB, ADMIN_PASS, getFunilSources } from '../lib/clients'
 import { LogoV4, IconGlobe, IconCart, IconTarget } from '../icons'
 import { ThemeToggle } from './ui'
 
@@ -71,7 +71,7 @@ export function GestorHome() {
                 {c.metaIds.length > 0 && <Tag>Meta</Tag>}
                 {c.googleIds.length > 0 && <Tag>Google</Tag>}
                 {c.tiktokIds.length > 0 && <Tag>TikTok</Tag>}
-                {c.funilSource && <Tag accent>{FONTE_LABEL[c.funilSource]}</Tag>}
+                {getFunilSources(c).map((s, i) => <Tag key={i} accent>{s.label}</Tag>)}
               </div>
             </a>
           ))}

@@ -3,13 +3,18 @@ import { IconGrid, IconLayers, IconMap, IconFilm, LogoMeta, LogoGoogle, LogoTikT
 // Sidebar estreita, preta fixa, só ícones brancos.
 const fonteIcon = { kommo: IconBriefcase, shopify: IconCart, tray: IconCheck }
 
-export function Sidebar({ active, onNav, hasTikTok, funilSource }) {
+export function Sidebar({ active, onNav, hasTikTok, funilSources = [] }) {
+  const fonteItems = funilSources.map((s, i) => ({
+    id: funilSources.length > 1 ? `fonte-${s.tipo}` : 'fonte',
+    label: s.label,
+    Icon: fonteIcon[s.tipo] || IconLayers,
+  }))
   const items = [
     { id: 'overview', label: 'Visão Geral', Icon: IconGrid },
     { id: 'meta', label: 'Meta Ads', Icon: LogoMeta },
     { id: 'google', label: 'Google Ads', Icon: LogoGoogle },
     ...(hasTikTok ? [{ id: 'tiktok', label: 'TikTok Ads', Icon: LogoTikTok }] : []),
-    ...(funilSource ? [{ id: 'fonte', label: { kommo: 'Kommo', shopify: 'Shopify', tray: 'Tray' }[funilSource], Icon: fonteIcon[funilSource] || IconLayers }] : []),
+    ...fonteItems,
     { id: 'ads', label: 'Anúncios', Icon: IconFilm },
   ]
   return (

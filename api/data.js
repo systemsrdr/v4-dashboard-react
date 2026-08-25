@@ -1,33 +1,27 @@
-// Vercel Serverless Function — Proxy genérico para dados de campanhas
-// Recebe os mesmos query params do endpoint /all e repassa, anexando a API key no servidor.
-//
-// Endpoint exposto: GET /api/data?date_from=...&date_to=...&fields=...
-// Retorna: a resposta crua do upstream
-
+// Proxy serverless para a API da Windsor.ai.
+// GET /api/data?date_from=&date_to=&fields=  → encaminha para connectors.windsor.ai/all
+// A chave fica só no servidor (env WINDSOR_API_KEY), nunca no front.
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+  const KEY = process.env.WINDSOR_API_KEY || '2d4d1d577551f238260e5e6e150a4d7b4f24'
+  const { date_from, date_to, fields, breakdowns } = req.query || {}
 
-  const API_KEY = process.env.WINDSOR_API_KEY || '2d4d1d577551f238260e5e6e150a4d7b4f24';
+  const params = new URLSearchParams()
+  params.set('api_key', KEY)
+  params.set('date_preset', 'custom')
+  if (date_from) params.set('date_from', date_from)
+  if (date_to) params.set('date_to', date_to)
+  if (fields) params.set('fields', fields)
+  if (breakdowns) params.set('breakdowns', breakdowns)
+  params.set('_renderer', 'json')
 
+  const url = `https://connectors.windsor.ai/all?${params.toString()}`
   try {
-    // Reconstrói querystring sem api_key (vamos anexar a nossa)
-    const qs = new URLSearchParams();
-    for (const [k, v] of Object.entries(req.query || {})) {
-      if (k === 'api_key') continue;
-      qs.set(k, Array.isArray(v) ? v[0] : v);
-    }
-    qs.set('api_key', API_KEY);
-
-    const url = `https://connectors.windsor.ai/all?${qs.toString()}`;
-    const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
-    const text = await r.text();
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Cache-Control', 's-maxage=120, stale-while-revalidate=300');
-    res.status(r.status).send(text);
-  } catch (err) {
-    res.status(500).json({ error: 'proxy_failed', message: String(err) });
+    const r = await fetch(url)
+    const text = await r.text()
+    res.setHeader('Content-Type', 'application/json')
+    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600')
+    return res.status(r.status).send(text)
+  } catch (e) {
+    return res.status(502).json({ error: 'upstream_failed', detail: String(e), data: [] })
   }
 }

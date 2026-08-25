@@ -2,7 +2,7 @@
 // pass e sheet ficam aqui (front). funilSource define a guia Kommo/Shopify/Tray.
 export const CLIENTS_DB = {
   "aliancas": { nome: "CS Alianças", seg: "Joalheria · E-commerce", tipo: "ec", moeda: "BRL", pais: "BR", metaIds: ["2429115943910453"], googleIds: ["670-426-5990"], tiktokIds: ["7535219818488905746"], pass: "Lira3705", sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTsMuSXIpzP3kg-v1c_8peav-AaSKPWQ7irMj3padTTA8J8OR24do9Y0_RRfeKa5Tr6W0WjYCRwTQNi/pub?output=csv", funilSource: "shopify", funilSheet: null },
-  "bsc": { nome: "BSC Pickup Solutions", seg: "Logística · E-commerce B2B", tipo: "ec", moeda: "BRL", pais: "BR", metaIds: ["1707098029742717", "2114458526044587"], googleIds: ["483-772-6517"], tiktokIds: [], pass: "Elo7198", sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTIqsXutKII_DYsFBQMEeo1I5SJq9b8I-RZxWoX3Ur8StELc9nYnntV_Dgnt20PLlD9nUeExeMjjihp/pub?output=csv", funilSource: "tray", funilSheet: null },
+  "bsc": { nome: "BSC Pickup Solutions", seg: "Logística · E-commerce B2B", tipo: "ec", moeda: "BRL", pais: "BR", metaIds: ["1707098029742717", "2114458526044587"], googleIds: ["483-772-6517"], tiktokIds: [], pass: "Elo7198", sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTIqsXutKII_DYsFBQMEeo1I5SJq9b8I-RZxWoX3Ur8StELc9nYnntV_Dgnt20PLlD9nUeExeMjjihp/pub?output=csv", funilSources: [ { tipo: "kommo", label: "Kommo", sheet: null }, { tipo: "tray", label: "Tray", sheet: null } ] },
   "fanes-joias": { nome: "Fane's Joias", seg: "Joalheria", tipo: "ec", moeda: "BRL", pais: "BR", metaIds: ["2296171467380179", "474991624866547"], googleIds: [], tiktokIds: [], pass: "Sol7293", sheet: null, funilSource: null, funilSheet: null },
   "magus": { nome: "Magus Industria", seg: "Indústria", tipo: "ec", moeda: "BRL", pais: "BR", metaIds: ["1333183713911053"], googleIds: ["855-603-9301"], tiktokIds: [], pass: "Gama4955", sheet: null, funilSource: null, funilSheet: null },
   "bluefit-farol": { nome: "Bluefit Maceió Farol", seg: "Academia", tipo: "is", moeda: "BRL", pais: "BR", metaIds: ["941582737278806"], googleIds: [], tiktokIds: [], pass: "Atlas4375", sheet: null, funilSource: null, funilSheet: null },
@@ -37,4 +37,16 @@ export const GEO_COORDS = {
   "Rio Grande do Norte": [-5.79, -35.21], "Piauí": [-5.09, -42.80], "Mato Grosso do Sul": [-20.44, -54.65],
   "Sergipe": [-10.90, -37.07], "Rondônia": [-8.76, -63.90], "Tocantins": [-10.18, -48.33],
   "Acre": [-9.97, -67.81], "Amapá": [0.03, -51.07], "Roraima": [2.82, -60.67],
+}
+
+// Normaliza a config de funil: retorna sempre um array de { tipo, label, sheet }.
+// Aceita tanto o formato antigo (funilSource + funilSheet) quanto o novo (funilSources[]).
+export function getFunilSources(C) {
+  if (Array.isArray(C.funilSources) && C.funilSources.length) {
+    return C.funilSources.map((f) => ({ tipo: f.tipo, label: f.label || ({ kommo: 'Kommo', shopify: 'Shopify', tray: 'Tray' }[f.tipo] || f.tipo), sheet: f.sheet || null }))
+  }
+  if (C.funilSource) {
+    return [{ tipo: C.funilSource, label: { kommo: 'Kommo', shopify: 'Shopify', tray: 'Tray' }[C.funilSource] || C.funilSource, sheet: C.funilSheet || null }]
+  }
+  return []
 }

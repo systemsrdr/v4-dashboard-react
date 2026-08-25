@@ -4,13 +4,17 @@ import { FunnelV4 } from './FunnelV4'
 import { GaugeChart } from './GaugeChart'
 import { VersusPanel, GenderDonut, AgeBars } from './Audience'
 import { GeoMap } from './GeoMap'
-import { deltaObj } from '../lib/format'
-import { IconWallet, IconCart, IconTarget, IconTrendUp, IconTicket, IconMessage, IconClipboard, IconGlobe, IconLayers, IconUsers, IconMap } from '../icons'
+import { deltaObj, groupTikTok, groupMeta, groupGoogle } from '../lib/format'
+import { getFunilSources } from '../lib/clients'
+import { SpendByPlatform, SpendDonut, TopCampaigns, ResultsByCampaign, EfficiencyBars } from './OverviewCharts'
+import { IconWallet, IconCart, IconTarget, IconTrendUp, IconTicket, IconMessage, IconClipboard, IconGlobe, IconLayers, IconUsers, IconMap, IconChart } from '../icons'
 
 const safeInt = (v) => { const n = Math.round(v); return Number.isFinite(n) ? n : 0 }
 
 export function Overview({ data, C, fmt, demo }) {
-  const { meta: mG, google: gG, prev, fin, funilSrc, geo } = data
+  const { prev, fin, funilSrc, funilSrcs, geo } = data
+  const mG = useMemo(() => groupMeta(data.meta), [data.meta])
+  const gG = useMemo(() => groupGoogle(data.google), [data.google])
   const [tab, setTab] = useState('all')
   const isEc = C.tipo === 'ec'
 
@@ -23,6 +27,7 @@ export function Overview({ data, C, fmt, demo }) {
   const pur = fin.v || mG.reduce((a, x) => a + (x.pur || 0), 0)
   const rev = fin.fat || mG.reduce((a, x) => a + (x.rev || 0), 0)
   const hasGoogle = (C.googleIds && C.googleIds.length > 0) && gSp > 0
+  const tSp = data.tiktok ? groupTikTok(data.tiktok).reduce((a, x) => a + x.sp, 0) : 0
 
   // ── Hero KPIs ──
   const heroKpis = isEc
@@ -54,8 +59,19 @@ export function Overview({ data, C, fmt, demo }) {
       { title: 'Investimento', value: safeInt(totalSp), max: Math.max(1000, Math.ceil(safeInt(totalSp) * 1.2) || 1000), unit: fmt.simb(), label: 'no período', tip: 'Gasto total Meta + Google.' },
     ]
 
-  // ── Funil V4 (steps por plataforma + funilSource) ──
-  const funnelSteps = useMemo(() => buildFunnel(tab, { mG, gG, C, fin, funilSrc, fmt }), [tab, mG, gG, C, fin, funilSrc]) // eslint-disable-line
+  // ── Funis V4 (um por fonte de fundo; ou um só se fonte única/nenhuma) ──
+  const funis = useMemo(() => {
+    const sources = getFunilSources(C)
+    const dadosPorTipo = {}
+    ;(funilSrcs || []).forEach((s) => { dadosPorTipo[s.tipo] = s.dados })
+    if (!sources.length) {
+      return [{ label: null, steps: buildFunnel(tab, { mG, gG, C, fin, fmt, srcType: null }) }]
+    }
+    return sources.map((s) => ({
+      label: sources.length > 1 ? s.label : null,
+      steps: buildFunnel(tab, { mG, gG, C, fin, fmt, srcType: s.tipo, fs: dadosPorTipo[s.tipo] || funilSrc || {} }),
+    }))
+  }, [tab, mG, gG, C, fin, funilSrc, funilSrcs]) // eslint-disable-line
 
   // ── VS Meta vs Google ──
   const vsRows = useMemo(() => buildVs({ mG, gG, isEc, fin, fmt }), [mG, gG, isEc, fin]) // eslint-disable-line
@@ -77,8 +93,30 @@ export function Overview({ data, C, fmt, demo }) {
       </div>
 
       <div>
-        <SectionHead icon={IconLayers} title="Funil de conversão" />
-        <FunnelV4 steps={funnelSteps} tab={tab} onTab={setTab} fmt={fmt} />
+        <SectionHead icon={IconLayers} title={funis.length > 1 ? 'Funis de conversão' : 'Funil de conversão'} />
+        {funis.length > 1 ? (
+          <div className="grid gap-3.5" style={{ gridTemplateColumns: 'repeat(2, minmax(0,1fr))' }}>
+            {funis.map((f, i) => (
+              <div key={i}>
+                {f.label && <div className="text-[12px] font-bold uppercase tracking-wide mb-2 px-1" style={{ color: 'var(--text-2)' }}>{f.label}</div>}
+                <FunnelV4 steps={f.steps} tab={tab} onTab={setTab} fmt={fmt} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <FunnelV4 steps={funis[0].steps} tab={tab} onTab={setTab} fmt={fmt} />
+        )}
+      </div>
+
+      <div>
+        <SectionHead icon={IconChart} title="Análise de campanhas" />
+        <div className="grid gap-3.5" style={{ gridTemplateColumns: 'repeat(2, minmax(0,1fr))' }}>
+          <SpendByPlatform mSp={mSp} gSp={gSp} tSp={tSp} fmt={fmt} />
+          <SpendDonut mG={mG} fmt={fmt} />
+          <TopCampaigns mG={mG} fmt={fmt} />
+          <ResultsByCampaign mG={mG} isEc={isEc} fmt={fmt} />
+          {hasGoogle && <EfficiencyBars mG={mG} gG={gG} fmt={fmt} />}
+        </div>
       </div>
 
       {hasGoogle && (
@@ -108,8 +146,9 @@ export function Overview({ data, C, fmt, demo }) {
   )
 }
 
-// Constrói os steps do funil conforme plataforma e fonte de fundo
-function buildFunnel(plat, { mG, gG, C, fin, funilSrc, fmt }) {
+// Constrói os steps do funil conforme plataforma e uma fonte de fundo específica.
+// srcType: 'kommo' | 'shopify' | 'tray' | null. fs: dados dessa fonte.
+function buildFunnel(plat, { mG, gG, C, fin, fmt, srcType, fs = {} }) {
   const mI = mG.reduce((a, x) => a + x.imp, 0), mC = mG.reduce((a, x) => a + x.clk, 0), mSp = mG.reduce((a, x) => a + x.sp, 0)
   const gI = gG.reduce((a, x) => a + x.imp, 0), gC = gG.reduce((a, x) => a + x.clk, 0), gSp = gG.reduce((a, x) => a + x.sp, 0)
   const gConv = gG.reduce((a, x) => a + x.conv, 0)
@@ -119,7 +158,6 @@ function buildFunnel(plat, { mG, gG, C, fin, funilSrc, fmt }) {
   else if (plat === 'google') { sp = gSp; imp = gI; clk = gC }
   else { sp = mSp + gSp; imp = mI + gI; clk = mC + gC }
 
-  const fs = funilSrc || {}
   const wpp = mG.reduce((a, x) => a + (x.wpp || 0), 0), leads = mG.reduce((a, x) => a + (x.leads || 0), 0)
   const purMeta = fin.v || mG.reduce((a, x) => a + (x.pur || 0), 0)
   const revMeta = fin.fat || mG.reduce((a, x) => a + (x.rev || 0), 0)
@@ -130,15 +168,14 @@ function buildFunnel(plat, { mG, gG, C, fin, funilSrc, fmt }) {
     { l: 'Cliques', v: fmt.fn(clk), sideL: 'CPC', side: clk > 0 ? fmt.frr(sp / clk) : null },
     { l: 'Visitas', v: fmt.fn(clk), sideL: 'CPV', side: clk > 0 ? fmt.frr(sp / clk) : null },
   ]
-  const src = C.funilSource
-  if (src === 'kommo') {
+  if (srcType === 'kommo') {
     const mqlV = fs.mql || (wpp + leads)
     steps.push({ l: 'Leads (MQL)', v: fmt.fn(mqlV), sideL: 'CPL/MQL', side: mqlV > 0 ? fmt.frr(sp / mqlV) : null })
     if (fs.sql > 0) steps.push({ l: 'Leads (SQL)', v: fmt.fn(fs.sql), sideL: 'CPL/SQL', side: fmt.frr(sp / fs.sql) })
     if (fs.sqo > 0) steps.push({ l: 'Oportunidades (SQO)', v: fmt.fn(fs.sqo), sideL: 'Custo/SQO', side: fmt.frr(sp / fs.sqo) })
     steps.push({ l: 'Vendas', v: fmt.fn(fs.vendas || 0), sideL: 'CPA', side: fs.vendas > 0 ? fmt.frr(sp / fs.vendas) : null })
     if (fs.receita > 0) steps.push({ l: 'Receita', v: fmt.fr(fs.receita), sideL: 'ROAS', side: sp > 0 ? (fs.receita / sp).toFixed(2) : null })
-  } else if (src === 'shopify' || src === 'tray') {
+  } else if (srcType === 'shopify' || srcType === 'tray') {
     const vend = fs.vendas || purMeta, rec = fs.receita || revMeta
     if ((fs.carrinho || 0) > 0) steps.push({ l: 'Adições ao Carrinho', v: fmt.fn(fs.carrinho), sideL: 'Custo/ATC', side: fmt.frr(sp / fs.carrinho) })
     steps.push({ l: 'Vendas', v: fmt.fn(vend), sideL: 'CPA', side: vend > 0 ? fmt.frr(sp / vend) : null })

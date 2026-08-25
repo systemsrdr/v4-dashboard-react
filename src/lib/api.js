@@ -1,5 +1,6 @@
 import Papa from 'papaparse'
 import { iso, leadReal, msgReal } from './format'
+import { getFunilSources } from './clients'
 
 const normId = (id) => String(id).replace(/-/g, '')
 const num = (v) => parseFloat(v || 0)
@@ -61,40 +62,44 @@ async function loadFinanceSheet(sheet, dateTo) {
   return fin
 }
 
-// Carrega a fonte de fundo de funil (Kommo/Shopify/Tray) por CSV
-async function loadFunilSource(C, dateTo) {
-  if (!C.funilSheet) return {}
-  const rows = await loadCsv(C.funilSheet)
-  const mes = new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(new Date(dateTo)).toLowerCase()
+// Lê UMA aba CSV de fonte de funil e extrai os dados do mês.
+async function readFunilSheet(tipo, sheet, mes) {
+  if (!sheet) return {}
+  const rows = await loadCsv(sheet)
   const p = parseBR
   let out = {}
   rows.forEach((row) => {
     const colA = String(row[0] || '').toLowerCase().trim()
     if (!colA.includes(mes)) return
-    // Kommo:   A=mês | B=MQL | C=SQL | D=SQO | E=Vendas | F=Receita
+    // Kommo:        A=mês | B=MQL | C=SQL | D=SQO | E=Vendas | F=Receita
     // Shopify/Tray: A=mês | B=Carrinho | C=Vendas | D=Receita
-    if (C.funilSource === 'kommo') out = { mql: p(row[1]), sql: p(row[2]), sqo: p(row[3]), vendas: p(row[4]), receita: p(row[5]) }
+    if (tipo === 'kommo') out = { mql: p(row[1]), sql: p(row[2]), sqo: p(row[3]), vendas: p(row[4]), receita: p(row[5]) }
     else out = { carrinho: p(row[1]), vendas: p(row[2]), receita: p(row[3]) }
   })
   return out
 }
 
-// Fetch principal — devolve todo o state de dados para o cliente e período
-export async function fetchAll(C, dateFrom, dateTo) {
-  const days = Math.round((new Date(dateTo) - new Date(dateFrom)) / 86400000) + 1
-  const pf = new Date(dateFrom); pf.setDate(pf.getDate() - days)
-  const pt = new Date(dateFrom); pt.setDate(pt.getDate() - 1)
-  const pfStr = iso(pf), ptStr = iso(pt)
+// Carrega TODAS as fontes de fundo de funil do cliente (1 ou mais).
+// Retorna array: [{ tipo, label, dados }]. Vazio se o cliente não tem fonte.
+async function loadFunilSources(C, dateTo) {
+  const sources = getFunilSources(C)
+  if (!sources.length) return []
+  const mes = new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(new Date(dateTo)).toLowerCase()
+  const results = await Promise.all(
+    sources.map(async (s) => ({ tipo: s.tipo, label: s.label, dados: await readFunilSheet(s.tipo, s.sheet, mes) }))
+  )
+  return results
+}
 
-  const [mJ, mPJ, gJ, gPJ, ttJ, geoJ, fin, funilSrc] = await Promise.all([
+// Fetch ESSENCIAL — só o necessário para mostrar a tela (Meta + Google atuais + planilha).
+// Retorna rápido para o dashboard aparecer sem esperar geo/demografia/comparativo.
+export async function fetchCore(C, dateFrom, dateTo) {
+  const [mJ, gJ, ttJ, fin, funilSrcs] = await Promise.all([
     apiData({ date_from: dateFrom, date_to: dateTo, fields: `source,account_id,campaign,spend,impressions,clicks,ctr,cpc,actions_omni_purchase,action_values_omni_purchase,${MSGF},${LEADF},objective` }),
-    apiData({ date_from: pfStr, date_to: ptStr, fields: `source,account_id,spend,actions_omni_purchase,action_values_omni_purchase,${MSGF},${LEADF},conversions` }),
     apiData({ date_from: dateFrom, date_to: dateTo, fields: 'source,account_id,campaign,spend,impressions,clicks,ctr,cpc,conversions,cost_per_conversion' }),
-    apiData({ date_from: pfStr, date_to: ptStr, fields: 'source,account_id,spend,conversions' }),
     (C.tiktokIds && C.tiktokIds.length) ? apiData({ date_from: dateFrom, date_to: dateTo, fields: 'source,account_id,campaign,spend,impressions,clicks,ctr,cpc,conversions' }) : Promise.resolve({ data: [] }),
-    apiData({ date_from: dateFrom, date_to: dateTo, fields: 'source,account_id,region,clicks,impressions,spend' }),
     loadFinanceSheet(C.sheet, dateTo),
-    loadFunilSource(C, dateTo),
+    loadFunilSources(C, dateTo),
   ])
 
   const inMeta = (r) => C.metaIds.map(normId).includes(normId(r.account_id))
@@ -104,10 +109,37 @@ export async function fetchAll(C, dateFrom, dateTo) {
   const meta = (mJ.data || []).filter(inMeta)
   const google = (gJ.data || []).filter(inGoogle)
   const tiktok = (C.tiktokIds && C.tiktokIds.length) ? (ttJ.data || []).filter(inTk) : []
-  const geo = (geoJ.data || []).filter((r) => inMeta(r) && r.region && r.region !== 'Unknown')
+
+  if (!C.sheet) {
+    const w = meta.reduce((a, r) => a + msgReal(r), 0)
+    const l = meta.reduce((a, r) => a + leadReal(r), 0)
+    fin.v = Math.round(w + l)
+  }
+
+  // funilSrcs: array de todas as fontes. funilSrc: primeira (compat fonte única).
+  return { meta, google, tiktok, geo: [], prev: { mSp: 0, gSp: 0, rev: 0, v: 0, wpp: 0, leads: 0, conv: 0 }, fin, funilSrcs, funilSrc: (funilSrcs[0] && funilSrcs[0].dados) || {} }
+}
+
+// Fetch SECUNDÁRIO — período anterior (deltas) + geo. Roda em segundo plano.
+export async function fetchExtras(C, dateFrom, dateTo) {
+  const days = Math.round((new Date(dateTo) - new Date(dateFrom)) / 86400000) + 1
+  const pf = new Date(dateFrom); pf.setDate(pf.getDate() - days)
+  const pt = new Date(dateFrom); pt.setDate(pt.getDate() - 1)
+  const pfStr = iso(pf), ptStr = iso(pt)
+
+  const [mPJ, gPJ, geoJ] = await Promise.all([
+    apiData({ date_from: pfStr, date_to: ptStr, fields: `source,account_id,spend,actions_omni_purchase,action_values_omni_purchase,${MSGF},${LEADF},conversions` }),
+    apiData({ date_from: pfStr, date_to: ptStr, fields: 'source,account_id,spend,conversions' }),
+    apiData({ date_from: dateFrom, date_to: dateTo, fields: 'source,account_id,region,clicks,impressions,spend' }),
+  ])
+
+  const inMeta = (r) => C.metaIds.map(normId).includes(normId(r.account_id))
+  const inGoogle = (r) => C.googleIds.map(normId).includes(normId(r.account_id))
 
   const mPrev = (mPJ.data || []).filter(inMeta)
   const gPrev = (gPJ.data || []).filter(inGoogle)
+  const geo = (geoJ.data || []).filter((r) => inMeta(r) && r.region && r.region !== 'Unknown')
+
   const prev = {
     mSp: mPrev.reduce((a, r) => a + num(r.spend), 0),
     gSp: gPrev.reduce((a, r) => a + num(r.spend), 0),
@@ -117,15 +149,12 @@ export async function fetchAll(C, dateFrom, dateTo) {
     leads: mPrev.reduce((a, r) => a + leadReal(r), 0),
     conv: gPrev.reduce((a, r) => a + num(r.conversions), 0),
   }
+  return { prev, geo }
+}
 
-  // Se não há planilha, estima "vendas" (resultados) pela soma de wpp+leads
-  if (!C.sheet) {
-    const w = meta.reduce((a, r) => a + msgReal(r), 0)
-    const l = meta.reduce((a, r) => a + leadReal(r), 0)
-    fin.v = Math.round(w + l)
-  }
-
-  return { meta, google, tiktok, geo, prev, fin, funilSrc }
+// Mantido por compatibilidade — agora só chama o core.
+export async function fetchAll(C, dateFrom, dateTo) {
+  return fetchCore(C, dateFrom, dateTo)
 }
 
 // Fetch de demografia (breakdown age/gender) — separado
