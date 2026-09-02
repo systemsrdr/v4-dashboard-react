@@ -2,98 +2,106 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─────────────────────────────────────────────────────────
-   Tokens de tema. Trocamos a classe .dark no <html>.
-   Vermelho V4 (#E8000D) e preto são constantes de marca;
-   o que muda entre temas são superfícies e textos.
-   ───────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════
+   TOKENS V4 — Dark Mode Profundo + Cards Branco Neve
+   Paleta: vermelho #E50914 · grafite #282C37 · sem azul
+   ══════════════════════════════════════════════════ */
 :root {
-  --bg: #F4F5F7;
-  --surface: #FFFFFF;
-  --surface-2: #F9FAFB;
-  --surface-3: #F3F4F6;
-  --border: #E8EAED;
-  --border-2: #D1D5DB;
-  --text: #1A1A2E;
-  --text-2: #4B5563;
-  --text-3: #9CA3AF;
-  --red: #E8000D;
-  --red-soft: #FF4D4D;
-  --red-2: #FEE2E2;
-  --red-3: #FECACA;
-  --ink: #111014;
-  --grn: #10B981;
-  --grn-2: #D1FAE5;
-  --amb: #F59E0B;
-  --amb-2: #FEF3C7;
-  --shadow: 0 4px 16px rgba(0, 0, 0, .06);
-  --shadow-lg: 0 12px 40px rgba(0, 0, 0, .12);
-  --chart-grid: #E8EAED;
-  --chart-tx: #4B5563;
+  --deep:      #0F1115;
+  --mid:       #161920;
+  --graphite:  #282C37;
+
+  /* Cards em branco neve (alto contraste) */
+  --card:      #FFFFFF;
+  --card-alt:  #F7F8FA;
+  --card-line: #E6E8EC;
+
+  --tx-card:   #12141A;
+  --tx-card2:  #5B6473;
+  --tx-card3:  #969DAA;
+
+  /* Texto sobre fundo escuro */
+  --tx:        #F2F4F8;
+  --tx2:       #9BA3B2;
+  --tx3:       #626B7A;
+
+  --red:       #E50914;
+  --red-2:     #FF4D4D;
+  --red-soft:  rgba(229,9,20,.12);
+  --red-line:  rgba(229,9,20,.30);
+
+  --green:     #12B76A;
+  --green-soft:rgba(18,183,106,.12);
+  --amber:     #F5A623;
+  --amber-soft:rgba(245,166,35,.12);
+
+  --border:    rgba(255,255,255,.07);
+  --border2:   #282C37;
 }
 
-.dark {
-  --bg: #0B0B0F;
-  --surface: #16161C;
-  --surface-2: #1C1C24;
-  --surface-3: #24242E;
-  --border: #2A2A33;
-  --border-2: #3A3A46;
-  --text: #F4F5F7;
-  --text-2: #B4B7C0;
-  --text-3: #7A7D88;
-  --red: #FF2130;
-  --red-soft: #FF5A66;
-  --red-2: #2A1416;
-  --red-3: #3A1A1E;
-  --ink: #F4F5F7;
-  --grn: #34D399;
-  --grn-2: #10241E;
-  --amb: #FBBF24;
-  --amb-2: #2A2314;
-  --shadow: 0 4px 16px rgba(0, 0, 0, .4);
-  --shadow-lg: 0 12px 40px rgba(0, 0, 0, .6);
-  --chart-grid: #2A2A33;
-  --chart-tx: #B4B7C0;
+/* Tema claro: fundo cinza claro, cards seguem brancos */
+.theme-light {
+  --deep:      #EEF0F4;
+  --mid:       #E4E7ED;
+  --graphite:  #D5D9E0;
+  --tx:        #12141A;
+  --tx2:       #5B6473;
+  --tx3:       #969DAA;
+  --border:    rgba(0,0,0,.08);
+  --border2:   #D5D9E0;
 }
 
-* { box-sizing: border-box; }
-html, body, #root { height: 100%; margin: 0; }
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Inter', system-ui, sans-serif;
-  font-size: 14px;
-  -webkit-font-smoothing: antialiased;
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { font-family: 'Inter', system-ui, sans-serif; background: var(--deep); color: var(--tx); -webkit-font-smoothing: antialiased; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--graphite); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--red); }
+
+/* ── CARD BRANCO NEVE ── */
+.snow {
+  background: var(--card);
+  border: 1px solid var(--card-line);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.06);
+  color: var(--tx-card);
 }
 
-/* Utilitários semânticos mapeados aos tokens (usados junto ao Tailwind) */
-.bg-surface { background: var(--surface); }
-.bg-surface-2 { background: var(--surface-2); }
-.bg-app { background: var(--bg); }
-.bd { border-color: var(--border); }
-.tx { color: var(--text); }
-.tx-2 { color: var(--text-2); }
-.tx-3 { color: var(--text-3); }
-
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
+/* ── GLASS (painéis sobre fundo escuro) ── */
+.glass {
+  background: rgba(40,44,55,.42);
+  border: 1px solid var(--graphite);
+  border-radius: 16px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
-.spin { animation: spin .8s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-
-/* Respeita usuários que pedem menos movimento */
-@media (prefers-reduced-motion: reduce) {
-  * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+/* ── SKELETON ── */
+@keyframes shimmer { 0% { background-position: -800px 0 } 100% { background-position: 800px 0 } }
+.skeleton {
+  background: linear-gradient(90deg, #EDEFF3 20%, #F7F8FA 50%, #EDEFF3 80%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s infinite linear;
+  border-radius: 8px;
+}
+.skeleton-dark {
+  background: linear-gradient(90deg, #1B1E27 20%, #232733 50%, #1B1E27 80%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s infinite linear;
+  border-radius: 8px;
 }
 
-/* Foco visível para navegação por teclado */
-:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+/* ── ANIMAÇÕES ── */
+@keyframes pulseDot { 0%,100% { opacity:1; transform:scale(1) } 50% { opacity:.35; transform:scale(.72) } }
+.pulse-dot { animation: pulseDot 2s ease-in-out infinite; }
 
-/* Scrollbar discreta no dark */
-.dark ::-webkit-scrollbar { width: 10px; height: 10px; }
-.dark ::-webkit-scrollbar-thumb { background: #2A2A33; border-radius: 8px; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:translateY(0) } }
+.fade-up { animation: fadeUp .32s cubic-bezier(.2,.8,.3,1) both; }
+
+@keyframes growBar { from { transform: scaleX(0) } to { transform: scaleX(1) } }
+.grow-bar { transform-origin: left; animation: growBar .6s cubic-bezier(.2,.8,.3,1) both; }
+
+input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(.55); cursor: pointer; }
+.theme-light input[type="date"]::-webkit-calendar-picker-indicator { filter: none; }

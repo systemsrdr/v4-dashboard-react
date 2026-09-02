@@ -1,19 +1,21 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 
-const ThemeCtx = createContext({ theme: 'light', toggle: () => {} })
+const Ctx = createContext({ tema: 'dark', alternar: () => {} })
 
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(() => {
-    try { return localStorage.getItem('v4_theme') || 'light' } catch { return 'light' }
-  })
+  const [tema, setTema] = useState(() => localStorage.getItem('v4-tema') || 'dark')
+
   useEffect(() => {
-    const root = document.documentElement
-    if (theme === 'dark') root.classList.add('dark')
-    else root.classList.remove('dark')
-    try { localStorage.setItem('v4_theme', theme) } catch { /* ignore */ }
-  }, [theme])
-  const toggle = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))
-  return <ThemeCtx.Provider value={{ theme, toggle }}>{children}</ThemeCtx.Provider>
+    document.documentElement.classList.toggle('theme-light', tema === 'light')
+    document.documentElement.classList.toggle('dark', tema === 'dark')
+    localStorage.setItem('v4-tema', tema)
+  }, [tema])
+
+  return (
+    <Ctx.Provider value={{ tema, alternar: () => setTema(t => (t === 'dark' ? 'light' : 'dark')) }}>
+      {children}
+    </Ctx.Provider>
+  )
 }
 
-export function useTheme() { return useContext(ThemeCtx) }
+export const useTheme = () => useContext(Ctx)

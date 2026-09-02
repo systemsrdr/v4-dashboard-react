@@ -1,161 +1,253 @@
-import { useEffect, useMemo, useState, useCallback } from 'react'
-import { CLIENTS_DB, ADMIN_PASS, getFunilSources } from './lib/clients'
-import { makeFmt, iso, groupMeta, groupGoogle, groupTikTok } from './lib/format'
-import { fetchCore, fetchExtras, fetchDemographics, fetchAds } from './lib/api'
-import { Login } from './components/Login'
-import { Sidebar } from './components/Sidebar'
-import { Header, Footer } from './components/Header'
-import { Overview } from './components/Overview'
-import { MetaChannel, GoogleChannel, TikTokChannel, FonteChannel } from './components/Channels'
-import { AdsSection } from './components/AdsSection'
-import { AiSummary } from './components/AiSummary'
-import { GestorHome } from './components/GestorHome'
+import React, { useState, useEffect, useMemo } from 'react'
+import { ThemeProvider } from './hooks/useTheme'
+import { getClient } from './lib/clients'
+import {
+  buscarDados, buscarCriativos, agruparCampanhas, totais,
+  lerFinanceiro, lerFunil,
+} from './lib/api'
+import { presetDatas, periodoAnterior, rotuloPeriodo } from './lib/format'
 
-function presetRange(id) {
-  const now = new Date()
-  const y = now.getFullYear(), m = now.getMonth()
-  if (id === 'this_month') return [iso(new Date(y, m, 1)), iso(now)]
-  if (id === 'prev_month') return [iso(new Date(y, m - 1, 1)), iso(new Date(y, m, 0))]
-  if (id === '7d') { const f = new Date(now); f.setDate(f.getDate() - 6); return [iso(f), iso(now)] }
-  const f = new Date(now); f.setDate(f.getDate() - 29); return [iso(f), iso(now)] // 30d
+import Login from './components/Login'
+import Sidebar from './components/Sidebar'
+import Header from './components/Header'
+import VisaoGeral from './components/VisaoGeral'
+import Ecommerce from './components/Ecommerce'
+import InsideSales from './components/InsideSales'
+import Conectores from './components/Conectores'
+import Configuracoes from './components/Configuracoes'
+
+const TITULOS = {
+  'visao-geral':  ['Visão Geral', 'Resultado consolidado de todos os canais'],
+  'ecommerce':    ['E-commerce', 'Mídia paga e vendas da loja virtual'],
+  'inside-sales': ['Inside Sales', 'Geração de leads e qualificação no CRM'],
+  'criativos':    ['Criativos & Mídia', 'Desempenho individual de cada anúncio'],
+  'conectores':   ['Conectores de Dados', 'Integrações ativas e cache'],
+  'config':       ['Configurações', 'Preferências do painel'],
+}
+
+/* ══ SESSÃO ══ */
+function useSessao() {
+  const [sessao, setSessao] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('v4-sessao') || sessionStorage.getItem('v4-sessao') || 'null')
+    } catch { return null }
+  })
+  const entrar = s => {
+    ;(s.manter ? localStorage : sessionStorage).setItem('v4-sessao', JSON.stringify(s))
+    setSessao(s)
+  }
+  const sair = () => {
+    localStorage.removeItem('v4-sessao'); sessionStorage.removeItem('v4-sessao')
+    setSessao(null)
+  }
+  const trocarCliente = slug => {
+    const s = { ...sessao, slug }
+    const alvo = localStorage.getItem('v4-sessao') ? localStorage : sessionStorage
+    alvo.setItem('v4-sessao', JSON.stringify(s))
+    setSessao(s)
+  }
+  return { sessao, entrar, sair, trocarCliente }
 }
 
 export default function App() {
-  const slug = useMemo(() => new URLSearchParams(location.search).get('cliente') || '', [])
-  const client = CLIENTS_DB[slug]
+  const { sessao, entrar, sair, trocarCliente } = useSessao()
+  const [secao, setSecao] = useState('visao-geral')
+  const [recolhida, setRecolhida] = useState(false)
+  const [periodo, setPeriodo] = useState(() => ({ ...presetDatas('este-mes'), preset: 'este-mes' }))
 
-  const [authed, setAuthed] = useState(false)
-  const [authErr, setAuthErr] = useState(false)
-  const [section, setSection] = useState('overview')
+  const [bruto, setBruto] = useState(null)
+  const [financeiro, setFinanceiro] = useState(null)
+  const [funilCrm, setFunilCrm] = useState(null)
+  const [criativos, setCriativos] = useState([])
+  const [carregando, setCarregando] = useState(true)
+  const [carregandoCriativos, setCarregandoCriativos] = useState(true)
 
-  const [[dateFrom, dateTo], setRange] = useState(() => presetRange('30d'))
-  const [pendingRange, setPendingRange] = useState([dateFrom, dateTo])
-  const [preset, setPreset] = useState('30d')
+  const cliente = sessao ? getClient(sessao.slug) : null
 
-  const [data, setData] = useState(null)
-  const [demo, setDemo] = useState(null)
-  const [adsRaw, setAdsRaw] = useState([])
-  const [adsLoading, setAdsLoading] = useState(false)
-  const [loading, setLoading] = useState(false)
-
-  const fmt = useMemo(() => makeFmt(client?.moeda || 'BRL'), [client])
-
-  // Sessão persistida por cliente
+  /* ── carga dos KPIs (rápida) ── */
   useEffect(() => {
-    if (!client) return
-    try { if (sessionStorage.getItem('v4_auth_' + slug) === '1') setAuthed(true) } catch { /* ignore */ }
-  }, [slug, client])
+    if (!cliente) return
+    let cancelado = false
+    setCarregando(true); setBruto(null); setFinanceiro(null); setFunilCrm(null)
 
-  const login = (pass) => {
-    if (pass === client.pass || pass === ADMIN_PASS) {
-      setAuthed(true); setAuthErr(false)
-      try { sessionStorage.setItem('v4_auth_' + slug, '1') } catch { /* ignore */ }
-    } else setAuthErr(true)
-  }
-  const logout = () => {
-    setAuthed(false)
-    try { sessionStorage.removeItem('v4_auth_' + slug) } catch { /* ignore */ }
-  }
+    const ant = periodoAnterior(periodo.de, periodo.ate)
 
-  const load = useCallback(async (from, to) => {
-    if (!client) return
-    setLoading(true)
-    setDemo(null)
-    try {
-      // Onda 1: essencial. Assim que chega, a tela já aparece.
-      const core = await fetchCore(client, from, to)
-      setData(core)
-      setLoading(false)
-      // Onda 2: comparativo (deltas) + geo, em segundo plano — mesclados quando chegam.
-      fetchExtras(client, from, to)
-        .then((extra) => setData((d) => d ? { ...d, prev: extra.prev, geo: extra.geo } : d))
-        .catch(() => {})
-      // Onda 2b: demografia, independente.
-      fetchDemographics(client, from, to).then(setDemo).catch(() => setDemo(null))
-    } catch {
-      setLoading(false)
-    }
-  }, [client])
+    buscarDados(cliente, periodo.de, periodo.ate, ant.de, ant.ate)
+      .then(d => { if (!cancelado) { setBruto(d); setCarregando(false) } })
+      .catch(() => { if (!cancelado) setCarregando(false) })
 
-  useEffect(() => { if (authed && client) load(dateFrom, dateTo) }, [authed, client]) // eslint-disable-line
+    lerFinanceiro(cliente.sheet, periodo.ate).then(f => { if (!cancelado) setFinanceiro(f) })
+    lerFunil(cliente.funilSheet, cliente.vendaSource, periodo.ate).then(f => { if (!cancelado) setFunilCrm(f) })
 
-  // Carrega anúncios sob demanda ao abrir a seção
+    return () => { cancelado = true }
+  }, [cliente?.slug, periodo.de, periodo.ate]) // eslint-disable-line
+
+  /* ── criativos (lazy) ── */
   useEffect(() => {
-    if (section === 'ads' && authed && client && !adsRaw.length) {
-      setAdsLoading(true)
-      fetchAds(client, dateFrom, dateTo).then(setAdsRaw).catch(() => setAdsRaw([])).finally(() => setAdsLoading(false))
-    }
-  }, [section, authed, client]) // eslint-disable-line
+    if (!cliente) return
+    let cancelado = false
+    setCarregandoCriativos(true); setCriativos([])
+    const t = setTimeout(() => {
+      buscarCriativos(cliente, periodo.de, periodo.ate)
+        .then(c => { if (!cancelado) { setCriativos(c); setCarregandoCriativos(false) } })
+        .catch(() => { if (!cancelado) setCarregandoCriativos(false) })
+    }, 150)
+    return () => { cancelado = true; clearTimeout(t) }
+  }, [cliente?.slug, periodo.de, periodo.ate]) // eslint-disable-line
 
-  const onDate = (which, val) => setPendingRange((r) => which === 'from' ? [val, r[1]] : [r[0], val])
-  const onPreset = (id) => { const [f, t] = presetRange(id); setPreset(id); setPendingRange([f, t]); setRange([f, t]); setAdsRaw([]); load(f, t) }
-  const onApply = () => { setPreset(''); setRange(pendingRange); setAdsRaw([]); load(pendingRange[0], pendingRange[1]) }
+  const metricas = useMemo(
+    () => (bruto && cliente ? calcular(bruto, financeiro, funilCrm, cliente) : vazio()),
+    [bruto, financeiro, funilCrm, cliente]
+  )
 
-  // ── Sem slug → home do gestor ──
-  if (!slug) return <GestorHome />
+  if (!sessao || !cliente) return <ThemeProvider><Login onEntrar={entrar} /></ThemeProvider>
 
-  // ── 404 cliente inexistente ──
-  if (!client) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--bg)' }}>
-        <div className="card p-8 max-w-md text-center" style={{ boxShadow: 'var(--shadow-lg)' }}>
-          <div className="text-[16px] font-extrabold mb-2" style={{ color: 'var(--text)' }}>Cliente não encontrado</div>
-          <div className="text-[13px] leading-relaxed mb-4" style={{ color: 'var(--text-2)' }}>
-            O identificador <code>{slug}</code> não existe. Veja a lista de clientes na página inicial.
-          </div>
-          <a href="?" className="inline-block px-4 py-2 rounded-lg text-[13px] font-bold text-white" style={{ background: 'var(--red)' }}>Voltar ao início</a>
-        </div>
-      </div>
-    )
-  }
-
-  if (!authed) return <Login client={client} onSubmit={login} error={authErr} />
-
-  const mG = data ? groupMeta(data.meta) : []
-  const gG = data ? groupGoogle(data.google) : []
-  const tG = data ? groupTikTok(data.tiktok) : []
-  const totalSp = mG.reduce((a, x) => a + x.sp, 0) + gG.reduce((a, x) => a + x.sp, 0)
-  const clientFunilSources = getFunilSources(client)
+  const largura = recolhida ? 64 : 232
+  const [titulo, subtitulo] = TITULOS[secao] || TITULOS['visao-geral']
+  const props = { metricas, criativos, cliente, carregando, carregandoCriativos }
 
   return (
-    <div style={{ background: 'var(--bg)', minHeight: '100vh' }}>
-      <Sidebar active={section} onNav={setSection} hasTikTok={client.tiktokIds?.length > 0} funilSources={clientFunilSources} />
-      <div style={{ marginLeft: 68 }}>
-        <Header
-          client={client} slug={slug}
-          dateFrom={pendingRange[0]} dateTo={pendingRange[1]}
-          onDate={onDate} onPreset={onPreset} onApply={onApply} activePreset={preset}
-          onLogout={logout}
+    <ThemeProvider>
+      <div className="min-h-screen bg-[var(--deep)]">
+        <Sidebar
+          secao={secao} onSecao={setSecao}
+          cliente={cliente} onCliente={trocarCliente} onSair={sair}
+          recolhida={recolhida} onRecolher={() => setRecolhida(r => !r)}
         />
-        <main className="px-6 py-6 max-w-[1500px] mx-auto">
-          {loading && !data ? (
-            <div className="flex flex-col items-center justify-center py-32 gap-3">
-              <div className="w-8 h-8 rounded-full border-2 spin" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--red)' }} />
-              <div className="text-[13px] font-semibold" style={{ color: 'var(--text-3)' }}>Carregando dados de {client.nome}…</div>
+        <Header
+          periodo={periodo} onPeriodo={setPeriodo}
+          cliente={cliente} carregando={carregando} larguraSidebar={largura}
+        />
+
+        <main className="transition-[padding] duration-200" style={{ paddingLeft: largura, paddingTop: 58 }}>
+          <div className="p-6 max-w-[1680px]">
+            <div className="mb-6 fade-up">
+              <div className="text-[10px] text-[var(--tx3)] mb-1.5 uppercase tracking-wider">
+                {cliente.nome} · {rotuloPeriodo(periodo.de, periodo.ate)}
+              </div>
+              <h1 className="text-[26px] font-extrabold text-[var(--tx)] tracking-tight leading-none">{titulo}</h1>
+              <p className="text-[12px] text-[var(--tx2)] mt-1.5">{subtitulo}</p>
             </div>
-          ) : data ? (
-            <>
-              {section === 'overview' && (
-                <>
-                  <AiSummary client={client} data={data} fmt={fmt} dateFrom={dateFrom} dateTo={dateTo} />
-                  <Overview data={data} C={client} fmt={fmt} demo={demo} />
-                </>
-              )}
-              {section === 'meta' && <MetaChannel mG={mG} fmt={fmt} tipo={client.tipo} />}
-              {section === 'google' && <GoogleChannel gG={gG} fmt={fmt} />}
-              {section === 'tiktok' && <TikTokChannel tG={tG} fmt={fmt} />}
-              {section.startsWith('fonte') && (() => {
-                const srcs = data.funilSrcs || []
-                const picked = section === 'fonte' ? srcs[0] : srcs.find((s) => `fonte-${s.tipo}` === section)
-                if (!picked) return null
-                return <FonteChannel funilSource={picked.tipo} funilSrc={picked.dados} totalSpend={totalSp} fmt={fmt} />
-              })()}
-              {section === 'ads' && <AdsSection adsRaw={adsRaw} tipo={client.tipo} fmt={fmt} loading={adsLoading} />}
-            </>
-          ) : null}
-          <Footer />
+
+            {secao === 'visao-geral'  && <VisaoGeral {...props} />}
+            {secao === 'ecommerce'    && <Ecommerce {...props} />}
+            {secao === 'inside-sales' && <InsideSales {...props} />}
+            {secao === 'criativos'    && (cliente.tipo === 'ecommerce'
+              ? <Ecommerce {...props} /> : <InsideSales {...props} />)}
+            {secao === 'conectores'   && <Conectores cliente={cliente} metricas={metricas} />}
+            {secao === 'config'       && <Configuracoes cliente={cliente} />}
+          </div>
         </main>
       </div>
-    </div>
+    </ThemeProvider>
   )
+}
+
+/* ══════════════════════════════════════════════════════
+   CÁLCULO DE MÉTRICAS
+   ══════════════════════════════════════════════════════ */
+function calcular(bruto, fin, crm, cliente) {
+  const { atual, anterior } = bruto
+  const ecommerce = cliente.tipo === 'ecommerce'
+
+  const campanhas = [
+    ...agruparCampanhas(atual.meta, 'meta'),
+    ...agruparCampanhas(atual.google, 'google'),
+    ...agruparCampanhas(atual.tiktok, 'tiktok'),
+  ].sort((a, b) => b.custo - a.custo)
+
+  const tM = totais(atual.meta),   tG = totais(atual.google),   tT = totais(atual.tiktok)
+  const aM = totais(anterior.meta), aG = totais(anterior.google), aT = totais(anterior.tiktok)
+
+  const custo    = tM.custo + tG.custo + tT.custo
+  const custoAnt = aM.custo + aG.custo + aT.custo
+  const impressoes = tM.impressoes + tG.impressoes + tT.impressoes
+  const impAnt     = aM.impressoes + aG.impressoes + aT.impressoes
+  const cliques    = tM.cliques + tG.cliques + tT.cliques
+  const clkAnt     = aM.cliques + aG.cliques + aT.cliques
+
+  const wpp   = tM.wpp
+  const leads = tM.leads + tG.leads + tT.leads
+  const mqpl  = leads + wpp
+  const mqplAnt = aM.leads + aG.leads + aT.leads + aM.wpp
+
+  /* receita/vendas: planilha e CRM têm prioridade sobre a API */
+  const receitaApi = tM.receita + tG.receita + tT.receita
+  const vendasApi  = tM.compras + tG.conversoes + tT.conversoes
+
+  const receita = ecommerce
+    ? (fin?.receitaTotal || receitaApi)
+    : (crm?.receita || 0)
+  const vendas = ecommerce
+    ? (fin?.vendasTotal || vendasApi)
+    : (crm?.vendas || 0)
+
+  const receitaAnt = aM.receita + aG.receita + aT.receita
+  const vendasAnt  = aM.compras + aG.conversoes + aT.conversoes
+
+  /* canais */
+  const canais = []
+  const add = (chave, nome, t, rec, vd) => {
+    if (t.custo <= 0) return
+    const r = rec ?? t.receita
+    canais.push({
+      chave, nome, custo: t.custo, receita: r, vendas: vd ?? t.compras,
+      leads: t.leads, wpp: t.wpp, impressoes: t.impressoes, cliques: t.cliques,
+      roas: t.custo > 0 && r > 0 ? r / t.custo : 0,
+    })
+  }
+  add('meta', 'Meta', tM,
+    fin ? fin.metaReceita + fin.wppReceita : undefined,
+    fin ? fin.metaVendas + fin.wppVendas : undefined)
+  add('google', 'Google', tG, fin?.googleReceita, fin?.googleVendas)
+  add('tiktok', 'TikTok', tT)
+
+  const custoMsg = campanhas.filter(c => c.tipo === 'mensagem').reduce((a, c) => a + c.custo, 0)
+  const sql = crm?.sql || 0
+
+  const roas = custo > 0 && receita > 0 ? receita / custo : 0
+  const roasAnt = custoAnt > 0 && receitaAnt > 0 ? receitaAnt / custoAnt : 0
+
+  /* série temporal derivada das campanhas — aproximação por campanha
+     enquanto a Windsor não devolve o campo `date` na chamada agregada */
+  const serie = campanhas.slice(0, 12).map((c, i) => ({
+    dia: c.campanha.slice(0, 10) || `#${i + 1}`,
+    custo: Math.round(c.custo),
+    receita: Math.round(c.receita),
+    cpa: Math.round(c.cpa),
+    cpl: c.leads + c.wpp > 0 ? Math.round(c.custo / (c.leads + c.wpp)) : 0,
+    taxaLead: c.cliques > 0 ? +(((c.leads + c.wpp) / c.cliques) * 100).toFixed(1) : 0,
+  }))
+
+  return {
+    custo, receita, vendas, impressoes, cliques, wpp, leads, mqpl,
+    custoMsg, campanhas, canais, serie,
+    origemVendas: { shopify: 'Shopify', tray: 'Tray', kommo: 'Kommo' }[cliente.vendaSource],
+    roas,
+    ticket: (ecommerce ? fin?.ticketMedio : 0) || (vendas > 0 ? receita / vendas : 0),
+    cpa: vendas > 0 ? custo / vendas : 0,
+    cpl: mqpl > 0 ? custo / mqpl : 0,
+    cpc: cliques > 0 ? custo / cliques : 0,
+    ctr: impressoes > 0 ? (cliques / impressoes) * 100 : 0,
+    sql,
+    custoSql: sql > 0 ? custo / sql : 0,
+    taxaMqplSql: mqpl > 0 && sql > 0 ? (sql / mqpl) * 100 : 0,
+    taxaSqlVenda: sql > 0 && vendas > 0 ? (vendas / sql) * 100 : 0,
+    ant: {
+      custo: custoAnt, receita: receitaAnt, vendas: vendasAnt,
+      impressoes: impAnt, cliques: clkAnt, mqpl: mqplAnt, roas: roasAnt,
+      ticket: vendasAnt > 0 ? receitaAnt / vendasAnt : 0,
+      cpa: vendasAnt > 0 ? custoAnt / vendasAnt : 0,
+      cpl: mqplAnt > 0 ? custoAnt / mqplAnt : 0,
+    },
+  }
+}
+
+function vazio() {
+  const z = { custo: 0, receita: 0, vendas: 0, impressoes: 0, cliques: 0, mqpl: 0, roas: 0, ticket: 0, cpa: 0, cpl: 0 }
+  return {
+    ...z, wpp: 0, leads: 0, custoMsg: 0, campanhas: [], canais: [], serie: [],
+    sql: 0, custoSql: 0, taxaMqplSql: 0, taxaSqlVenda: 0, cpc: 0, ctr: 0,
+    origemVendas: null, ant: z,
+  }
 }

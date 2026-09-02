@@ -1,113 +1,72 @@
-// Helpers de formatação e agregação — portados do dashboard HTML.
+// ══ MOEDA DINÂMICA ══════════════════════════════════════════
+const SIM = { BRL: 'R$', EUR: '€' }
 
-export function simb(moeda) { return moeda === 'EUR' ? '\u20ac\u00a0' : 'R$\u00a0' }
-export function loc(moeda) { return moeda === 'EUR' ? 'pt-PT' : 'pt-BR' }
+/** Valor compacto: R$ 12,4k · € 1,2M */
+export function money(v, moeda = 'BRL') {
+  const n = parseFloat(v) || 0
+  const s = SIM[moeda] || 'R$'
+  const a = Math.abs(n), sig = n < 0 ? '-' : ''
+  if (a >= 1e6) return `${sig}${s} ${(a / 1e6).toFixed(1).replace('.', ',')}M`
+  if (a >= 1e4) return `${sig}${s} ${(a / 1e3).toFixed(1).replace('.', ',')}k`
+  return `${sig}${s} ${a.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`
+}
 
-export function makeFmt(moeda) {
-  const s = simb(moeda), l = loc(moeda)
-  return {
-    fr: (n) => s + (n || 0).toLocaleString(l, { minimumFractionDigits: 0, maximumFractionDigits: 0 }),
-    frr: (n) => s + (n || 0).toLocaleString(l, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-    fn: (n) => Math.round(n || 0).toLocaleString('pt-BR'),
-    fp: (n) => (parseFloat(n) || 0).toFixed(2) + '%',
-    simb: () => s,
+/** Valor completo: R$ 1.234,56 */
+export function moneyFull(v, moeda = 'BRL') {
+  const n = parseFloat(v) || 0
+  const s = SIM[moeda] || 'R$'
+  return `${s} ${n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+export function num(v) {
+  const n = Math.round(parseFloat(v) || 0)
+  if (n >= 1e6) return `${(n / 1e6).toFixed(1).replace('.', ',')}M`
+  if (n >= 1e4) return `${(n / 1e3).toFixed(1).replace('.', ',')}k`
+  return n.toLocaleString('pt-BR')
+}
+
+export const numFull = v => Math.round(parseFloat(v) || 0).toLocaleString('pt-BR')
+export const pct = (v, d = 2) => `${(parseFloat(v) || 0).toFixed(d).replace('.', ',')}%`
+export const roasFmt = v => `${(parseFloat(v) || 0).toFixed(2).replace('.', ',')}x`
+
+// ══ DELTA ═══════════════════════════════════════════════════
+export function deltaPct(atual, anterior) {
+  if (anterior === null || anterior === undefined || anterior === 0) return null
+  return ((atual - anterior) / Math.abs(anterior)) * 100
+}
+
+// ══ DATAS ═══════════════════════════════════════════════════
+export const iso = d => d.toISOString().split('T')[0]
+
+export function periodoAnterior(de, ate) {
+  const f = new Date(de), t = new Date(ate)
+  const dias = Math.round((t - f) / 86400000) + 1
+  const pf = new Date(f); pf.setDate(pf.getDate() - dias)
+  const pt = new Date(f); pt.setDate(pt.getDate() - 1)
+  return { de: iso(pf), ate: iso(pt) }
+}
+
+export function presetDatas(preset) {
+  const hoje = new Date()
+  const a = hoje.getFullYear(), m = hoje.getMonth()
+  let de, ate = new Date(hoje)
+  switch (preset) {
+    case 'hoje':        de = new Date(hoje); break
+    case '7d':          de = new Date(hoje); de.setDate(de.getDate() - 6); break
+    case '30d':         de = new Date(hoje); de.setDate(de.getDate() - 29); break
+    case 'este-mes':    de = new Date(a, m, 1); break
+    case 'mes-passado': de = new Date(a, m - 1, 1); ate = new Date(a, m, 0); break
+    default:            de = new Date(hoje); de.setDate(de.getDate() - 29)
   }
+  return { de: iso(de), ate: iso(ate) }
 }
 
-export function sn(str, l = 999) {
-  return String(str || '').replace(/🟢\s*/g, '').replace(/\[V4RDR&Co\]/g, '').replace(/\[V4&Co\]/g, '').trim().substring(0, l)
-}
-export function cleanCamp(str) {
-  return String(str || '').replace(/🟢\s*/g, '').replace(/\[V4RDR&Co\]/gi, '').replace(/\[V4&Co\]/gi, '')
-    .replace(/^\s*\d+#\s*/, '').replace(/\s{2,}/g, ' ').trim() || 'Sem campanha'
-}
+export const nomeMes = dataStr =>
+  new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(new Date(dataStr + 'T12:00:00')).toLowerCase()
 
-export function pctChg(a, b) {
-  if (!b || b === 0 || !Number.isFinite(b) || !Number.isFinite(a)) return null
-  const r = ((a - b) / Math.abs(b) * 100)
-  return Number.isFinite(r) ? r : null
+export function rotuloPeriodo(de, ate) {
+  const o = { day: '2-digit', month: 'short' }
+  const f = new Date(de + 'T12:00:00').toLocaleDateString('pt-BR', o)
+  const t = new Date(ate + 'T12:00:00').toLocaleDateString('pt-BR', o)
+  return `${f} – ${t}`
 }
-export function deltaObj(curr, prev, inv = false) {
-  const p = pctChg(curr, prev)
-  if (p === null) return null
-  const up = inv ? (p < 0) : (p >= 0)
-  return { up, dn: !up, arrow: p >= 0 ? '↑' : '↓', txt: Math.abs(p).toFixed(1) + '%' }
-}
-
-const num = (v) => parseFloat(v || 0)
-
-export function leadReal(r) {
-  return num(r.actions_lead) + num(r.actions_leadgen_grouped) + num(r.actions_onsite_conversion_lead_grouped)
-    + num(r.actions_offsite_conversion_fb_pixel_lead) + num(r.actions_complete_registration)
-}
-export function msgReal(r) {
-  return num(r.actions_onsite_conversion_messaging_conversation_started_7d)
-    + num(r.actions_onsite_conversion_total_messaging_connection)
-}
-
-export function campType(row) {
-  const obj = String(row.objective || '').toUpperCase()
-  const nm = String(row.campaign || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-  const isMsg = msgReal(row) > 0 || nm.includes('wpp') || nm.includes('mensagem') || nm.includes('mensag') || nm.includes('msg') || nm.includes('whatsapp') || nm.includes('message')
-  if (obj.includes('LEADS') || nm.includes('lead') || nm.includes('formulario')) return 'lead'
-  if (isMsg) { const wpp = msgReal(row); const pur = num(row.actions_omni_purchase); if (wpp >= pur) return 'msg' }
-  if (num(row.actions_omni_purchase) > 0 || obj.includes('SALES')) return 'compra'
-  if (isMsg) return 'msg'
-  return 'outro'
-}
-
-export function groupMeta(meta) {
-  const m = {}
-  meta.forEach((r) => {
-    const k = r.campaign || 'Sem campanha'
-    if (!m[k]) m[k] = { c: k, sp: 0, imp: 0, clk: 0, wpp: 0, leads: 0, pur: 0, rev: 0, n: 0, obj: r.objective || '' }
-    m[k].sp += num(r.spend); m[k].imp += num(r.impressions); m[k].clk += num(r.clicks)
-    m[k].wpp += msgReal(r); m[k].leads += leadReal(r); m[k].pur += num(r.actions_omni_purchase)
-    m[k].rev += num(r.action_values_omni_purchase); m[k].n++
-  })
-  return Object.values(m).map((d) => {
-    d.ctr = d.imp > 0 ? d.clk / d.imp * 100 : 0
-    d.cpc = d.clk > 0 ? d.sp / d.clk : 0
-    d.type = campType({ objective: d.obj, campaign: d.c, actions_omni_purchase: d.pur, actions_onsite_conversion_messaging_conversation_started_7d: d.wpp, actions_lead: d.leads })
-    return d
-  }).sort((a, b) => b.sp - a.sp)
-}
-
-export function groupGoogle(google) {
-  const g = {}
-  google.forEach((r) => {
-    const k = r.campaign || 'Sem campanha'
-    if (!g[k]) g[k] = { c: k, sp: 0, imp: 0, clk: 0, conv: 0, n: 0 }
-    g[k].sp += num(r.spend); g[k].imp += num(r.impressions || r.imp); g[k].clk += num(r.clicks || r.clk); g[k].conv += num(r.conversions); g[k].n++
-  })
-  return Object.values(g).map((d) => {
-    d.cpa = d.conv > 0 ? d.sp / d.conv : 0
-    d.ctr = d.imp > 0 ? d.clk / d.imp * 100 : 0
-    d.cpc = d.clk > 0 ? d.sp / d.clk : 0
-    return d
-  }).sort((a, b) => b.sp - a.sp)
-}
-
-export function groupTikTok(tiktok) {
-  const g = {}
-  tiktok.forEach((r) => {
-    const k = r.campaign || 'Sem campanha'
-    if (!g[k]) g[k] = { c: k, sp: 0, imp: 0, clk: 0, conv: 0, n: 0 }
-    g[k].sp += num(r.spend); g[k].imp += num(r.impressions); g[k].clk += num(r.clicks); g[k].conv += num(r.conversions); g[k].n++
-  })
-  return Object.values(g).filter((d) => d.sp > 0).map((d) => {
-    d.cpa = d.conv > 0 ? d.sp / d.conv : 0
-    d.ctr = d.imp > 0 ? d.clk / d.imp * 100 : 0
-    d.cpc = d.clk > 0 ? d.sp / d.clk : 0
-    return d
-  }).sort((a, b) => b.sp - a.sp)
-}
-
-// Gradiente vermelho→preto do funil (sem azul)
-export function fv4Color(i, n) {
-  const t = n > 1 ? i / (n - 1) : 0
-  const lerp = (a, b) => Math.round(a + (b - a) * t)
-  return `rgb(${lerp(0xE8, 0x11)},${lerp(0x00, 0x10)},${lerp(0x0D, 0x14)})`
-}
-
-export function iso(d) { return d.toISOString().split('T')[0] }
