@@ -1,17 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { listClients } from '../lib/clients'
 import {
-  LogoV4, IcVisaoGeral, IcEcommerce, IcInsideSales, IcCriativos,
-  IcConectores, IcConfig, IcSair, IcChevron, IcUpload,
+  LogoV4, IcVisaoGeral, IcCriativos, IcConectores, IcConfig, IcSair,
+  IcChevron, IcUpload, IcMeta, IcGoogle, IcTikTok, IcShopify,
 } from '../icons'
 
 const MENU = [
-  { id: 'visao-geral',  rotulo: 'Visão Geral',      Icone: IcVisaoGeral },
-  { id: 'ecommerce',    rotulo: 'E-commerce',        Icone: IcEcommerce,   tipo: 'ecommerce' },
-  { id: 'inside-sales', rotulo: 'Inside Sales',      Icone: IcInsideSales, tipo: 'inside-sales' },
-  { id: 'criativos',    rotulo: 'Criativos & Mídia', Icone: IcCriativos },
-  { id: 'conectores',   rotulo: 'Conectores de Dados', Icone: IcConectores },
-  { id: 'config',       rotulo: 'Configurações',     Icone: IcConfig },
+  { id: 'visao-geral', rotulo: 'Visão Geral',  Icone: IcVisaoGeral },
+  { id: 'meta',        rotulo: 'Meta Ads',     Icone: IcMeta },
+  { id: 'google',      rotulo: 'Google Ads',   Icone: IcGoogle },
+  { id: 'tiktok',      rotulo: 'TikTok Ads',   Icone: IcTikTok },
+  { id: 'shopify',     rotulo: 'Shopify',      Icone: IcShopify },
+  { id: 'anuncios',    rotulo: 'Anúncios',     Icone: IcCriativos },
+  { id: 'conectores',  rotulo: 'Conectores',   Icone: IcConectores },
+  { id: 'config',      rotulo: 'Configurações',Icone: IcConfig },
 ]
 
 /* Logo do cliente persistida em localStorage por slug */
@@ -50,7 +52,7 @@ export default function Sidebar({ secao, onSecao, cliente, onCliente, onSair, re
   return (
     <aside
       className="fixed top-0 left-0 h-screen z-50 flex flex-col bg-[#0B0C10] border-r border-[var(--border2)] transition-[width] duration-200"
-      style={{ width: recolhida ? 64 : 232 }}
+      style={{ width: recolhida ? 60 : 200 }}
     >
       {/* ── Logo V4 + recolher ── */}
       <div className="flex items-center gap-2.5 px-3.5 h-[58px] border-b border-[var(--border2)] shrink-0">

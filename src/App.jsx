@@ -15,12 +15,19 @@ import Ecommerce from './components/Ecommerce'
 import InsideSales from './components/InsideSales'
 import Conectores from './components/Conectores'
 import Configuracoes from './components/Configuracoes'
+import Plataforma from './components/Plataforma'
+import Shopify from './components/Shopify'
+import CriativosView from './components/CriativosView'
 
 const TITULOS = {
   'visao-geral':  ['Visão Geral', 'Resultado consolidado de todos os canais'],
+  'meta':         ['Meta Ads', 'Investimento e resultados da Meta (Facebook e Instagram)'],
+  'google':       ['Google Ads', 'Investimento e resultados do Google'],
+  'tiktok':       ['TikTok Ads', 'Investimento e resultados do TikTok'],
+  'shopify':      ['Shopify', 'Vendas e receita da loja Shopify'],
+  'anuncios':     ['Anúncios', 'Desempenho individual de cada criativo'],
   'ecommerce':    ['E-commerce', 'Mídia paga e vendas da loja virtual'],
   'inside-sales': ['Inside Sales', 'Geração de leads e qualificação no CRM'],
-  'criativos':    ['Criativos & Mídia', 'Desempenho individual de cada anúncio'],
   'conectores':   ['Conectores de Dados', 'Integrações ativas e cache'],
   'config':       ['Configurações', 'Preferências do painel'],
 }
@@ -102,7 +109,7 @@ export default function App() {
 
   if (!sessao || !cliente) return <ThemeProvider><Login onEntrar={entrar} /></ThemeProvider>
 
-  const largura = recolhida ? 64 : 232
+  const largura = recolhida ? 60 : 200
   const [titulo, subtitulo] = TITULOS[secao] || TITULOS['visao-geral']
   const props = { metricas, criativos, cliente, carregando, carregandoCriativos }
 
@@ -130,10 +137,15 @@ export default function App() {
             </div>
 
             {secao === 'visao-geral'  && <VisaoGeral {...props} />}
+            {(secao === 'meta' || secao === 'google' || secao === 'tiktok') &&
+              <Plataforma canal={secao} {...props} />}
+            {secao === 'shopify'      && <Shopify cliente={cliente} />}
+            {secao === 'anuncios'     && (
+              <CriativosView criativos={criativos} moeda={cliente.moeda}
+                ecommerce={cliente.tipo === 'ecommerce'} carregando={carregandoCriativos} />
+            )}
             {secao === 'ecommerce'    && <Ecommerce {...props} />}
             {secao === 'inside-sales' && <InsideSales {...props} />}
-            {secao === 'criativos'    && (cliente.tipo === 'ecommerce'
-              ? <Ecommerce {...props} /> : <InsideSales {...props} />)}
             {secao === 'conectores'   && <Conectores cliente={cliente} metricas={metricas} />}
             {secao === 'config'       && <Configuracoes cliente={cliente} />}
           </div>
@@ -219,9 +231,22 @@ function calcular(bruto, fin, crm, cliente) {
     taxaLead: c.cliques > 0 ? +(((c.leads + c.wpp) / c.cliques) * 100).toFixed(1) : 0,
   }))
 
+  const perfilPlat = t => {
+    const vendas = (t.compras || 0) + (t.conversoes || 0)
+    return {
+      custo: t.custo, impressoes: t.impressoes, cliques: t.cliques,
+      receita: t.receita, leads: t.leads, wpp: t.wpp, vendas,
+      cpc: t.cliques > 0 ? t.custo / t.cliques : 0,
+      ctr: t.impressoes > 0 ? (t.cliques / t.impressoes) * 100 : 0,
+      roas: t.custo > 0 && t.receita > 0 ? t.receita / t.custo : 0,
+      cpa: vendas > 0 ? t.custo / vendas : 0,
+    }
+  }
+
   return {
     custo, receita, vendas, impressoes, cliques, wpp, leads, mqpl,
     custoMsg, campanhas, canais, serie,
+    plataformas: { meta: perfilPlat(tM), google: perfilPlat(tG), tiktok: perfilPlat(tT) },
     origemVendas: { shopify: 'Shopify', tray: 'Tray', kommo: 'Kommo' }[cliente.vendaSource],
     roas,
     ticket: (ecommerce ? fin?.ticketMedio : 0) || (vendas > 0 ? receita / vendas : 0),
@@ -248,6 +273,6 @@ function vazio() {
   return {
     ...z, wpp: 0, leads: 0, custoMsg: 0, campanhas: [], canais: [], serie: [],
     sql: 0, custoSql: 0, taxaMqplSql: 0, taxaSqlVenda: 0, cpc: 0, ctr: 0,
-    origemVendas: null, ant: z,
+    origemVendas: null, plataformas: {}, ant: z,
   }
 }
