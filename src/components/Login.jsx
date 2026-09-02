@@ -3,7 +3,6 @@ import { CLIENTS, ADMIN_PASS } from '../lib/clients'
 import { LogoV4, IcAlerta } from '../icons'
 
 export default function Login({ onEntrar }) {
-  const [email, setEmail]     = useState('')
   const [senha, setSenha]     = useState('')
   const [manter, setManter]   = useState(true)
   const [erro, setErro]       = useState('')
@@ -83,7 +82,6 @@ export default function Login({ onEntrar }) {
           )}
 
           <form onSubmit={enviar} className="space-y-4">
-            <Campo rotulo="E-mail ou usuário" tipo="text" valor={email} onChange={setEmail} placeholder="Fábio ou nome@v4company.com" />
             <Campo rotulo="Senha" tipo="password" valor={senha} onChange={setSenha} placeholder="••••••••" obrigatorio />
 
             <div className="flex items-center justify-between pt-1">
