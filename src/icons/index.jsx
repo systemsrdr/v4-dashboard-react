@@ -7,10 +7,11 @@ const S = ({ children, size = 16, ...p }) => (
 
 /* ── LOGO V4 ── */
 export const LogoV4 = ({ size = 40, mono = false }) => (
-  <svg width={size} height={size * 0.8} viewBox="0 0 100 80" fill="none">
-    <rect width="100" height="80" rx="15" fill={mono ? 'currentColor' : '#E50914'} />
-    <polygon points="15,17 43,64 71,17" fill="#fff" />
-    <path d="M74 17v28h-9v10h9v8h11v-8h6V45h-6V17z" fill="#fff" />
+  <svg width={size} height={size} viewBox="0 0 120 120" fill="none">
+    <rect x="2" y="2" width="116" height="116" rx="18" fill={mono ? 'currentColor' : '#E50914'} />
+    <path d="M15 28 L50 93 L67 28" fill="none" stroke="#fff" strokeWidth="14.5" strokeLinejoin="miter" strokeMiterlimit="8" />
+    <path d="M84 28 L62 70 L101 70" fill="none" stroke="#fff" strokeWidth="14.5" strokeLinejoin="miter" strokeMiterlimit="8" />
+    <rect x="79" y="28" width="14.5" height="67" fill="#fff" />
   </svg>
 )
 
