@@ -1,6 +1,6 @@
 import React from 'react'
 import { Kpi, Bloco, Card, Vazio } from './ui'
-import { money, num, pct, roasFmt } from '../lib/format'
+import { money, moneyFull, num, pct, roasFmt } from '../lib/format'
 import {
   IcInvest, IcImpressao, IcClique, IcReceita, IcRoas, IcVendas, IcCpa,
   IcCriativos, canalIcone, canalNome,
@@ -27,7 +27,7 @@ export default function Plataforma({ canal, metricas: m, criativos, cliente, car
         <Kpi carregando={carregando} icone={IcInvest}    rotulo="Investimento" valor={money(p.custo, moeda)} delta={p.delta?.custo} cor="var(--red)" />
         <Kpi carregando={carregando} icone={IcImpressao} rotulo="Impressões"   valor={num(p.impressoes)} delta={p.delta?.impressoes} cor="var(--graphite)" />
         <Kpi carregando={carregando} icone={IcClique}    rotulo="Cliques"      valor={num(p.cliques)} sub={`CTR ${pct(p.ctr)}`} delta={p.delta?.cliques} cor="var(--graphite)" />
-        <Kpi carregando={carregando} icone={IcInvest}    rotulo="CPC"          valor={money(p.cpc, moeda)} cor="var(--graphite)" />
+        <Kpi carregando={carregando} icone={IcInvest}    rotulo="CPC"          valor={moneyFull(p.cpc, moeda)} cor="var(--graphite)" />
         <Kpi carregando={carregando} icone={IcReceita}   rotulo="Receita"      valor={money(p.receita, moeda)} delta={p.delta?.receita} cor="var(--green)" />
         <Kpi carregando={carregando} icone={IcRoas}      rotulo="ROAS"         valor={roasFmt(p.roas)} cor="var(--red)" />
         <Kpi carregando={carregando} icone={IcVendas}    rotulo="Conversões"   valor={num(p.vendas)} delta={p.delta?.vendas} cor="var(--graphite)" />

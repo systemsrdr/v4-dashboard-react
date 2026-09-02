@@ -3,7 +3,7 @@ import { Kpi, Grid, Bloco } from './ui'
 import Funil from './Funil'
 import { InvestimentoPorOrigem, SerieTemporal, BlocosCampanhas } from './GraficosLaterais'
 import CriativosView from './CriativosView'
-import { money, num, pct, deltaPct } from '../lib/format'
+import { money, moneyFull, num, pct, deltaPct } from '../lib/format'
 import {
   IcReceita, IcInvest, IcCpa, IcTicket, IcRoas,
   IcImpressao, IcClique, IcLead, IcVendas, IcKommo, IcInsideSales,
@@ -18,7 +18,7 @@ export default function InsideSales({ metricas: m, criativos, cliente, carregand
       dica: 'Quantas vezes os anúncios foram exibidos.' },
     { rotulo: 'Cliques', valor: m.cliques,
       dica: 'Pessoas que clicaram nos anúncios.' },
-    { rotulo: 'MQPL', valor: m.mqpl, custo: m.custo, origem: 'Mídia',
+    { rotulo: 'MQL', valor: m.mqpl, custo: m.custo, origem: 'Mídia',
       dica: 'Leads qualificados de marketing: formulários e conversas geradas pela mídia paga.' },
     { rotulo: 'SQL', valor: m.sql, origem: 'Kommo',
       dica: 'Leads qualificados por vendas, confirmados no Kommo CRM.' },
@@ -67,7 +67,7 @@ export default function InsideSales({ metricas: m, criativos, cliente, carregand
         <div className="space-y-3">
           <InvestimentoPorOrigem dados={porCanal} moeda={moeda} altura={112} />
           <SerieTemporal dados={m.serie} moeda={moeda} altura={112}
-            titulo="Taxa de conversão MQPL" sub="Cliques que viraram lead" formato="pct"
+            titulo="Taxa de conversão MQL" sub="Cliques que viraram lead" formato="pct"
             chaves={[{ chave: 'taxaLead', rotulo: 'Conversão' }]} />
           <SerieTemporal dados={m.serie} moeda={moeda} altura={112}
             titulo="Custo por lead (CPL)" sub="Evolução diária"
@@ -83,17 +83,17 @@ export default function InsideSales({ metricas: m, criativos, cliente, carregand
             delta={d(m.impressoes, m.ant.impressoes)} cor="var(--graphite)"
             dica="Exibições dos anúncios no período." />
           <Kpi carregando={carregando} icone={IcClique} rotulo="Cliques"
-            valor={num(m.cliques)} sub={`CPC ${money(m.cpc, moeda)}`}
+            valor={num(m.cliques)} sub={`CPC ${moneyFull(m.cpc, moeda)}`}
             delta={d(m.cliques, m.ant.cliques)} cor="var(--amber)"
             dica="Cliques recebidos nos anúncios." />
-          <Kpi carregando={carregando} icone={IcLead} rotulo="MQPL"
+          <Kpi carregando={carregando} icone={IcLead} rotulo="MQL"
             valor={num(m.mqpl)} sub={`${num(m.leads)} formulários · ${num(m.wpp)} conversas`}
             delta={d(m.mqpl, m.ant.mqpl)} cor="var(--green)"
             dica="Leads qualificados de marketing capturados diretamente na mídia paga." />
           <Kpi carregando={carregando} icone={IcCpa} rotulo="CPL"
             valor={m.cpl > 0 ? money(m.cpl, moeda) : '—'} sub="Custo por lead"
             delta={d(m.cpl, m.ant.cpl)} inverterDelta cor="var(--red-2)"
-            dica="Investimento dividido pelo número de MQPL." />
+            dica="Investimento dividido pelo número de MQL." />
           <Kpi carregando={carregando} icone={IcVendas} rotulo="SQL"
             valor={m.sql > 0 ? num(m.sql) : '—'}
             sub={m.sql > 0 ? `${pct(m.taxaMqplSql)} de aproveitamento` : 'Conectar Kommo'}
