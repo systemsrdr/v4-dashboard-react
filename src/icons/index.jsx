@@ -61,6 +61,7 @@ export const IcTikTok = ({ size = 16 }) => (
   </svg>
 )
 export const IcKommo = p => <S {...p}><rect x="3" y="4" width="18" height="16" rx="3" /><path d="M7 9h10M7 13h6" /></S>
+export const IcTray = p => <S {...p}><rect x="3" y="4" width="18" height="16" rx="3" /><path d="M8 9h8M12 9v6" /></S>
 export const IcShopify = p => <S {...p}><path d="M6 2 3 6v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" /><path d="M3 6h18" /></S>
 
 export const canalIcone = c => ({ meta: IcMeta, google: IcGoogle, tiktok: IcTikTok }[c] || IcRaio)

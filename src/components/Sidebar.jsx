@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { listClients } from '../lib/clients'
 import {
   LogoV4, IcVisaoGeral, IcCriativos, IcConectores, IcConfig, IcSair,
-  IcChevron, IcUpload, IcMeta, IcGoogle, IcTikTok, IcShopify,
+  IcChevron, IcMeta, IcGoogle, IcTikTok, IcShopify, IcTray,
 } from '../icons'
 
 const MENU = [
@@ -10,7 +10,6 @@ const MENU = [
   { id: 'meta',        rotulo: 'Meta Ads',     Icone: IcMeta },
   { id: 'google',      rotulo: 'Google Ads',   Icone: IcGoogle },
   { id: 'tiktok',      rotulo: 'TikTok Ads',   Icone: IcTikTok },
-  { id: 'shopify',     rotulo: 'Shopify',      Icone: IcShopify },
   { id: 'anuncios',    rotulo: 'Anúncios',     Icone: IcCriativos },
   { id: 'conectores',  rotulo: 'Conectores',   Icone: IcConectores },
   { id: 'config',      rotulo: 'Configurações',Icone: IcConfig },
@@ -46,8 +45,16 @@ export default function Sidebar({ secao, onSecao, cliente, onCliente, onSair, re
     setLogo(null)
   }
 
-  /* itens de menu filtrados pelo tipo de negócio do cliente */
-  const menuVisivel = MENU.filter(m => !m.tipo || m.tipo === cliente.tipo)
+  /* itens de menu + item de loja conforme a plataforma do cliente */
+  const lojaItem = cliente.vendaSource === 'shopify'
+    ? { id: 'shopify', rotulo: 'Shopify', Icone: IcShopify }
+    : cliente.vendaSource === 'tray'
+    ? { id: 'tray', rotulo: 'Tray', Icone: IcTray }
+    : null
+  const menuBase = MENU.filter(m => !m.tipo || m.tipo === cliente.tipo)
+  const menuVisivel = lojaItem
+    ? menuBase.flatMap(m => (m.id === 'tiktok' ? [m, lojaItem] : [m]))
+    : menuBase
 
   return (
     <aside
@@ -68,44 +75,6 @@ export default function Sidebar({ secao, onSecao, cliente, onCliente, onSair, re
           title={recolhida ? 'Expandir' : 'Recolher'}>
           <IcChevron dir={recolhida ? 'right' : 'left'} size={15} />
         </button>
-      </div>
-
-      {/* ── SLOT DE LOGO DO CLIENTE ── */}
-      <div className="px-3 pt-4 pb-3 border-b border-[var(--border2)] shrink-0">
-        {!recolhida && (
-          <div className="text-[9px] font-bold uppercase tracking-[.13em] text-white/25 mb-2 px-1">Logo do cliente</div>
-        )}
-        <div
-          onDragOver={e => { e.preventDefault(); setArrastando(true) }}
-          onDragLeave={() => setArrastando(false)}
-          onDrop={e => { e.preventDefault(); setArrastando(false); processarArquivo(e.dataTransfer.files?.[0]) }}
-          onClick={() => inputRef.current?.click()}
-          className={`relative rounded-xl cursor-pointer transition-all flex items-center justify-center overflow-hidden group ${
-            arrastando ? 'border-2 border-dashed border-[var(--red)] bg-[rgba(229,9,20,.08)]'
-                       : 'border border-dashed border-white/12 hover:border-[var(--red)] bg-white/[.03]'
-          }`}
-          style={{ height: recolhida ? 40 : 64 }}
-          title="Arraste ou clique para enviar a logo em SVG"
-        >
-          {logo ? (
-            <>
-              <img src={logo} alt="Logo do cliente" className="max-h-[80%] max-w-[85%] object-contain" />
-              {!recolhida && (
-                <button
-                  onClick={e => { e.stopPropagation(); removerLogo() }}
-                  className="absolute top-1 right-1 w-5 h-5 rounded-md bg-black/60 text-white/70 text-[11px] opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[var(--red)] hover:text-white"
-                >×</button>
-              )}
-            </>
-          ) : (
-            <div className="flex flex-col items-center gap-1 text-white/25 group-hover:text-[var(--red)] transition-colors">
-              <IcUpload size={recolhida ? 14 : 17} />
-              {!recolhida && <span className="text-[9px] font-semibold tracking-wide">Enviar SVG</span>}
-            </div>
-          )}
-        </div>
-        <input ref={inputRef} type="file" accept=".svg,image/svg+xml,image/png,image/jpeg,image/webp"
-          className="hidden" onChange={e => processarArquivo(e.target.files?.[0])} />
       </div>
 
       {/* ── SELETOR MULTICLIENTE ── */}

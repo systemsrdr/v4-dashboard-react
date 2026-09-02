@@ -24,13 +24,13 @@ export default function Plataforma({ canal, metricas: m, criativos, cliente, car
     <div className="space-y-5">
       {/* KPIs da plataforma */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Kpi carregando={carregando} icone={IcInvest}    rotulo="Investimento" valor={money(p.custo, moeda)} cor="var(--red)" />
-        <Kpi carregando={carregando} icone={IcImpressao} rotulo="Impressões"   valor={num(p.impressoes)} cor="var(--graphite)" />
-        <Kpi carregando={carregando} icone={IcClique}    rotulo="Cliques"      valor={num(p.cliques)} sub={`CTR ${pct(p.ctr)}`} cor="var(--graphite)" />
+        <Kpi carregando={carregando} icone={IcInvest}    rotulo="Investimento" valor={money(p.custo, moeda)} delta={p.delta?.custo} cor="var(--red)" />
+        <Kpi carregando={carregando} icone={IcImpressao} rotulo="Impressões"   valor={num(p.impressoes)} delta={p.delta?.impressoes} cor="var(--graphite)" />
+        <Kpi carregando={carregando} icone={IcClique}    rotulo="Cliques"      valor={num(p.cliques)} sub={`CTR ${pct(p.ctr)}`} delta={p.delta?.cliques} cor="var(--graphite)" />
         <Kpi carregando={carregando} icone={IcInvest}    rotulo="CPC"          valor={money(p.cpc, moeda)} cor="var(--graphite)" />
-        <Kpi carregando={carregando} icone={IcReceita}   rotulo="Receita"      valor={money(p.receita, moeda)} cor="var(--green)" />
+        <Kpi carregando={carregando} icone={IcReceita}   rotulo="Receita"      valor={money(p.receita, moeda)} delta={p.delta?.receita} cor="var(--green)" />
         <Kpi carregando={carregando} icone={IcRoas}      rotulo="ROAS"         valor={roasFmt(p.roas)} cor="var(--red)" />
-        <Kpi carregando={carregando} icone={IcVendas}    rotulo="Conversões"   valor={num(p.vendas)} cor="var(--graphite)" />
+        <Kpi carregando={carregando} icone={IcVendas}    rotulo="Conversões"   valor={num(p.vendas)} delta={p.delta?.vendas} cor="var(--graphite)" />
         <Kpi carregando={carregando} icone={IcCpa}       rotulo="CPA"          valor={money(p.cpa, moeda)} cor="var(--graphite)" />
       </div>
 
@@ -72,16 +72,13 @@ export default function Plataforma({ canal, metricas: m, criativos, cliente, car
         )}
       </Bloco>
 
-      {/* Anúncios do canal */}
-      <Bloco titulo={`Anúncios · ${canalNome(canal)}`}>
-        {canal === 'meta' ? (
+      {/* Anúncios — só Meta tem criativos individuais */}
+      {canal === 'meta' && (
+        <Bloco titulo="Anúncios · Meta Ads">
           <CriativosView criativos={cris} moeda={moeda}
             ecommerce={cliente.tipo === 'ecommerce'} carregando={carregandoCriativos} />
-        ) : (
-          <Vazio icone={IcCriativos} titulo="Criativos individuais indisponíveis"
-            descricao={`A Windsor não retorna miniaturas de anúncios para ${canalNome(canal)} nesta conta.`} />
-        )}
-      </Bloco>
+        </Bloco>
+      )}
     </div>
   )
 }

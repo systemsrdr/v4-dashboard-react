@@ -41,7 +41,7 @@ export function msgReal(r) {
 /* ══════════════════════════════════════════════════════════
    CACHE — 15 minutos (memória + localStorage)
    ══════════════════════════════════════════════════════════ */
-const TTL = 15 * 60 * 1000
+const TTL = Infinity /* cache permanente — só limpa via botão 'Forçar atualização' */
 const mem = new Map()
 
 function ler(k) {

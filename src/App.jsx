@@ -16,7 +16,7 @@ import InsideSales from './components/InsideSales'
 import Conectores from './components/Conectores'
 import Configuracoes from './components/Configuracoes'
 import Plataforma from './components/Plataforma'
-import Shopify from './components/Shopify'
+import Loja from './components/Loja'
 import CriativosView from './components/CriativosView'
 
 const TITULOS = {
@@ -25,6 +25,7 @@ const TITULOS = {
   'google':       ['Google Ads', 'Investimento e resultados do Google'],
   'tiktok':       ['TikTok Ads', 'Investimento e resultados do TikTok'],
   'shopify':      ['Shopify', 'Vendas e receita da loja Shopify'],
+  'tray':         ['Tray', 'Vendas e receita da loja Tray'],
   'anuncios':     ['Anúncios', 'Desempenho individual de cada criativo'],
   'ecommerce':    ['E-commerce', 'Mídia paga e vendas da loja virtual'],
   'inside-sales': ['Inside Sales', 'Geração de leads e qualificação no CRM'],
@@ -139,7 +140,8 @@ export default function App() {
             {secao === 'visao-geral'  && <VisaoGeral {...props} />}
             {(secao === 'meta' || secao === 'google' || secao === 'tiktok') &&
               <Plataforma canal={secao} {...props} />}
-            {secao === 'shopify'      && <Shopify cliente={cliente} />}
+            {(secao === 'shopify' || secao === 'tray') &&
+              <Loja plataforma={secao === 'tray' ? 'Tray' : 'Shopify'} cliente={cliente} />}
             {secao === 'anuncios'     && (
               <CriativosView criativos={criativos} moeda={cliente.moeda}
                 ecommerce={cliente.tipo === 'ecommerce'} carregando={carregandoCriativos} />
@@ -231,8 +233,10 @@ function calcular(bruto, fin, crm, cliente) {
     taxaLead: c.cliques > 0 ? +(((c.leads + c.wpp) / c.cliques) * 100).toFixed(1) : 0,
   }))
 
-  const perfilPlat = t => {
+  const dpct = (c, pv) => (pv > 0 ? ((c - pv) / pv) * 100 : (c > 0 ? 100 : null))
+  const perfilPlat = (t, a = {}) => {
     const vendas = (t.compras || 0) + (t.conversoes || 0)
+    const vendasAnt = (a.compras || 0) + (a.conversoes || 0)
     return {
       custo: t.custo, impressoes: t.impressoes, cliques: t.cliques,
       receita: t.receita, leads: t.leads, wpp: t.wpp, vendas,
@@ -240,13 +244,20 @@ function calcular(bruto, fin, crm, cliente) {
       ctr: t.impressoes > 0 ? (t.cliques / t.impressoes) * 100 : 0,
       roas: t.custo > 0 && t.receita > 0 ? t.receita / t.custo : 0,
       cpa: vendas > 0 ? t.custo / vendas : 0,
+      delta: {
+        custo: dpct(t.custo, a.custo || 0),
+        impressoes: dpct(t.impressoes, a.impressoes || 0),
+        cliques: dpct(t.cliques, a.cliques || 0),
+        receita: dpct(t.receita, a.receita || 0),
+        vendas: dpct(vendas, vendasAnt),
+      },
     }
   }
 
   return {
     custo, receita, vendas, impressoes, cliques, wpp, leads, mqpl,
     custoMsg, campanhas, canais, serie,
-    plataformas: { meta: perfilPlat(tM), google: perfilPlat(tG), tiktok: perfilPlat(tT) },
+    plataformas: { meta: perfilPlat(tM, aM), google: perfilPlat(tG, aG), tiktok: perfilPlat(tT, aT) },
     origemVendas: { shopify: 'Shopify', tray: 'Tray', kommo: 'Kommo' }[cliente.vendaSource],
     roas,
     ticket: (ecommerce ? fin?.ticketMedio : 0) || (vendas > 0 ? receita / vendas : 0),

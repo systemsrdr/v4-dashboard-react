@@ -7,16 +7,15 @@ import {
 
 export default function Conectores({ cliente, metricas }) {
   const fontes = [
-    { nome: 'Meta Ads',   Ic: IcMeta,   ids: cliente.metaIds,   via: 'Windsor.ai' },
-    { nome: 'Google Ads', Ic: IcGoogle, ids: cliente.googleIds, via: 'Windsor.ai' },
-    { nome: 'TikTok Ads', Ic: IcTikTok, ids: cliente.tiktokIds, via: 'Windsor.ai' },
+    { nome: 'Meta Ads',   Ic: IcMeta,   ids: cliente.metaIds },
+    { nome: 'Google Ads', Ic: IcGoogle, ids: cliente.googleIds },
+    { nome: 'TikTok Ads', Ic: IcTikTok, ids: cliente.tiktokIds },
     {
       nome: cliente.vendaSource === 'kommo' ? 'Kommo CRM'
           : cliente.vendaSource === 'tray'  ? 'Tray'
           : 'Shopify',
       Ic: cliente.vendaSource === 'kommo' ? IcKommo : IcShopify,
-      ids: cliente.sheet || cliente.funilSheet ? ['Planilha conectada'] : [],
-      via: 'Google Sheets (CSV)',
+      ids: cliente.sheet || cliente.funilSheet ? ['Conectado'] : [],
     },
   ]
 
@@ -43,7 +42,6 @@ export default function Conectores({ cliente, metricas }) {
                       {ativo ? 'Conectado' : 'Não configurado'}
                     </span>
                   </div>
-                  <p className="text-[11px] text-[var(--tx-card3)] mb-2">Via {f.via}</p>
                   {ativo && (
                     <div className="flex flex-wrap gap-1">
                       {f.ids.map(id => (
@@ -66,9 +64,8 @@ export default function Conectores({ cliente, metricas }) {
             <div className="min-w-0">
               <h4 className="text-[13px] font-bold text-[var(--tx-card)] mb-1">Cache inteligente</h4>
               <p className="text-[12px] text-[var(--tx-card2)] leading-relaxed max-w-lg">
-                As métricas consolidadas ficam em cache por 15 minutos em memória e no navegador.
-                Isso mantém a navegação instantânea entre as abas sem refazer chamadas à Windsor.ai.
-                Limpe o cache se precisar forçar dados totalmente novos.
+                Os dados ficam salvos no seu navegador para que a navegação entre as abas seja
+                instantânea. Use o botão ao lado quando quiser buscar dados novos.
               </p>
             </div>
             <button
