@@ -2,7 +2,7 @@ import React from 'react'
 import { Kpi, Grid, Bloco } from './ui'
 import Funil from './Funil'
 import { InvestimentoPorOrigem, SerieTemporal, BlocosCampanhas } from './GraficosLaterais'
-import TabelaCriativos from './TabelaCriativos'
+import CriativosView from './CriativosView'
 import { money, num, pct, deltaPct } from '../lib/format'
 import {
   IcReceita, IcInvest, IcCpa, IcTicket, IcRoas,
@@ -111,7 +111,7 @@ export default function InsideSales({ metricas: m, criativos, cliente, carregand
 
       {/* ══ CRIATIVOS ══ */}
       <Bloco titulo="Criativos ativos">
-        <TabelaCriativos criativos={criativos} moeda={moeda} ecommerce={false}
+        <CriativosView criativos={criativos} moeda={moeda} ecommerce={false}
           carregando={carregandoCriativos} />
       </Bloco>
     </>

@@ -3,7 +3,7 @@ import { Kpi, Grid, Bloco } from './ui'
 import Funil from './Funil'
 import { LinhasInvestimentoReceita, BarrasRoas } from './GraficoLinhas'
 import { InvestimentoPorOrigem, SerieTemporal, BlocosCampanhas } from './GraficosLaterais'
-import TabelaCriativos from './TabelaCriativos'
+import CriativosView from './CriativosView'
 import { money, num, roasFmt, pct, deltaPct } from '../lib/format'
 import {
   IcInvest, IcReceita, IcRoas, IcTicket, IcCpa,
@@ -118,7 +118,7 @@ export default function Ecommerce({ metricas: m, criativos, cliente, carregando,
 
       {/* ══ CRIATIVOS ══ */}
       <Bloco titulo="Criativos ativos">
-        <TabelaCriativos criativos={criativos} moeda={moeda} ecommerce
+        <CriativosView criativos={criativos} moeda={moeda} ecommerce
           carregando={carregandoCriativos} />
       </Bloco>
     </>
