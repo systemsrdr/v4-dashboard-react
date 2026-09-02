@@ -83,7 +83,7 @@ export default function Login({ onEntrar }) {
           )}
 
           <form onSubmit={enviar} className="space-y-4">
-            <Campo rotulo="E-mail corporativo" tipo="email" valor={email} onChange={setEmail} placeholder="nome@v4company.com" />
+            <Campo rotulo="E-mail ou usuário" tipo="text" valor={email} onChange={setEmail} placeholder="Fábio ou nome@v4company.com" />
             <Campo rotulo="Senha" tipo="password" valor={senha} onChange={setSenha} placeholder="••••••••" obrigatorio />
 
             <div className="flex items-center justify-between pt-1">
