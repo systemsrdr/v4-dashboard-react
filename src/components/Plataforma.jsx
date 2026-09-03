@@ -6,6 +6,7 @@ import {
   IcCriativos, canalIcone, canalNome,
 } from '../icons'
 import CriativosView from './CriativosView'
+import Medidor from './Medidor'
 
 /* Página de uma plataforma (meta | google | tiktok) — só os dados desse canal */
 export default function Plataforma({ canal, metricas: m, criativos, cliente, carregando, carregandoCriativos }) {
@@ -14,6 +15,7 @@ export default function Plataforma({ canal, metricas: m, criativos, cliente, car
     { custo: 0, impressoes: 0, cliques: 0, receita: 0, vendas: 0, cpc: 0, ctr: 0, roas: 0, cpa: 0 }
   const camps = (m.campanhas || []).filter(c => c.canal === canal)
   const cris  = (criativos || []).filter(c => c.canal === canal)
+  const taxaConv = p.cliques > 0 ? (p.vendas / p.cliques) * 100 : 0
 
   if (!carregando && p.custo <= 0 && camps.length === 0) {
     return <Vazio icone={canalIcone(canal)} titulo={`Sem dados de ${canalNome(canal)} no período`}
@@ -33,6 +35,17 @@ export default function Plataforma({ canal, metricas: m, criativos, cliente, car
         <Kpi carregando={carregando} icone={IcVendas}    rotulo="Conversões"   valor={num(p.vendas)} delta={p.delta?.vendas} cor="var(--graphite)" />
         <Kpi carregando={carregando} icone={IcCpa}       rotulo="CPA"          valor={money(p.cpa, moeda)} cor="var(--graphite)" />
       </div>
+
+      {/* Velocímetros */}
+      <Bloco titulo={`Indicadores · ${canalNome(canal)}`}>
+        <Card>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <Medidor rotulo="ROAS" texto={roasFmt(p.roas)} valor={p.roas} max={Math.max(5, Math.ceil((p.roas || 0) * 1.25))} cor="#E50914" />
+            <Medidor rotulo="CTR" texto={pct(p.ctr)} valor={p.ctr} max={Math.max(5, Math.ceil((p.ctr || 0) * 1.4))} cor="#F5A623" />
+            <Medidor rotulo="Conversão (clique → venda)" texto={pct(taxaConv)} valor={taxaConv} max={Math.max(5, Math.ceil((taxaConv || 0) * 1.4))} cor="#12B76A" />
+          </div>
+        </Card>
+      </Bloco>
 
       {/* Campanhas do canal */}
       <Bloco titulo={`Campanhas · ${canalNome(canal)}`}>

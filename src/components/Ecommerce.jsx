@@ -9,10 +9,13 @@ import {
   IcInvest, IcReceita, IcRoas, IcTicket, IcCpa,
   IcEcommerce, IcMensagem, canalIcone,
 } from '../icons'
+import Medidor from './Medidor'
+import Rosca from './Rosca'
 
 export default function Ecommerce({ metricas: m, criativos, cliente, carregando, carregandoCriativos }) {
   const { moeda } = cliente
   const d = (a, b) => deltaPct(a, b)
+  const convRate = m.cliques > 0 ? (m.vendas / m.cliques) * 100 : 0
 
   const porCanal = m.canais.map(c => ({
     canal: c.nome, investimento: c.custo, receita: c.receita, roas: c.roas,
@@ -73,6 +76,21 @@ export default function Ecommerce({ metricas: m, criativos, cliente, carregando,
             chaves={[{ chave: 'cpa', rotulo: 'CPA' }]} />
         </div>
       </div>
+
+      {/* ══ INDICADORES (VELOCÍMETROS) + DISTRIBUIÇÃO ══ */}
+      <Bloco titulo="Indicadores & distribuição do investimento" icone={IcEcommerce}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-2 p-3 rounded-2xl" style={{ background: 'var(--card)', border: '1px solid var(--card-line)' }}>
+            <Medidor rotulo="ROAS" texto={roasFmt(m.roas)} valor={m.roas} max={Math.max(5, Math.ceil((m.roas || 0) * 1.25))} cor="#E50914" />
+            <Medidor rotulo="CTR" texto={pct(m.ctr)} valor={m.ctr} max={Math.max(5, Math.ceil((m.ctr || 0) * 1.4))} cor="#F5A623" />
+            <Medidor rotulo="Conv. (clique→venda)" texto={pct(convRate)} valor={convRate} max={Math.max(5, Math.ceil((convRate || 0) * 1.4))} cor="#12B76A" />
+          </div>
+          <div className="p-3 rounded-2xl flex flex-col" style={{ background: 'var(--card)', border: '1px solid var(--card-line)' }}>
+            <div className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: 'var(--tx-card3)' }}>Investimento por canal</div>
+            <Rosca dados={m.canais.map(c => ({ name: c.nome, value: c.custo }))} moeda={moeda} />
+          </div>
+        </div>
+      </Bloco>
 
       {/* ══ ROAS POR CANAL ══ */}
       <Bloco titulo="Desempenho por canal" icone={IcEcommerce}>

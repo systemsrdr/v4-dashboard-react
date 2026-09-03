@@ -9,7 +9,6 @@ const MENU = [
   { id: 'visao-geral', rotulo: 'Visão Geral',  Icone: IcVisaoGeral },
   { id: 'meta',        rotulo: 'Meta Ads',     Icone: IcMeta },
   { id: 'google',      rotulo: 'Google Ads',   Icone: IcGoogle },
-  { id: 'tiktok',      rotulo: 'TikTok Ads',   Icone: IcTikTok },
   { id: 'anuncios',    rotulo: 'Anúncios',     Icone: IcCriativos },
   { id: 'conectores',  rotulo: 'Conectores',   Icone: IcConectores },
   { id: 'config',      rotulo: 'Configurações',Icone: IcConfig },
@@ -46,15 +45,13 @@ export default function Sidebar({ secao, onSecao, cliente, onCliente, onSair, re
   }
 
   /* itens de menu + item de loja conforme a plataforma do cliente */
-  const lojaItem = cliente.vendaSource === 'shopify'
-    ? { id: 'shopify', rotulo: 'Shopify', Icone: IcShopify }
-    : cliente.vendaSource === 'tray'
-    ? { id: 'tray', rotulo: 'Tray', Icone: IcTray }
-    : null
-  const menuBase = MENU.filter(m => !m.tipo || m.tipo === cliente.tipo)
-  const menuVisivel = lojaItem
-    ? menuBase.flatMap(m => (m.id === 'tiktok' ? [m, lojaItem] : [m]))
-    : menuBase
+  /* TikTok só onde há conta TikTok (hoje, só a CS Alianças); loja conforme vendaSource */
+  const extras = []
+  if (Array.isArray(cliente.tiktokIds) && cliente.tiktokIds.length)
+    extras.push({ id: 'tiktok', rotulo: 'TikTok Ads', Icone: IcTikTok })
+  if (cliente.vendaSource === 'shopify')   extras.push({ id: 'shopify', rotulo: 'Shopify', Icone: IcShopify })
+  else if (cliente.vendaSource === 'tray') extras.push({ id: 'tray', rotulo: 'Tray', Icone: IcTray })
+  const menuVisivel = MENU.flatMap(m => (m.id === 'google' ? [m, ...extras] : [m]))
 
   return (
     <aside
